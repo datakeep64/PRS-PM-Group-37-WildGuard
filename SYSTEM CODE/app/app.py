@@ -48,16 +48,35 @@ def load_json(path):
     return json.loads(p.read_text()) if p.exists() else None
 
 
-@st.cache_data
+QUEUE_COLS = ["year", "class", "taxon_display", "product_code", "quantity_std", "unit_group",
+              "purpose", "source", "origin", "exporter", "importer", "appendix", "reporter_type",
+              "risk_percentile", "tier", "reasons", "score_supervised", "score_peer",
+              "score_iforest", "score_kmeans", "score_hybrid"]
+EVAL_COLS = ["purpose", "label", "transfer:hybrid", "full:hybrid", "baseline:listing_rule",
+             "baseline:random"]
+
+
+def _compact(df, keep_text=()):
+    """Repeated strings (codes, tiers, taxa) as categoricals - keeps the hosted app small."""
+    for c in df.columns:
+        if df[c].dtype == object and c not in keep_text:
+            df[c] = df[c].astype("category")
+    return df
+
+
+# The two large tables are read-only, so they are cached once as shared resources rather than
+# copied per session (st.cache_data returns a fresh copy on every call).
+@st.cache_resource
 def load_queue():
     p = config.SAMPLES_DIR / "cites_review_queue.parquet"
-    return pd.read_parquet(p) if p.exists() else None
+    return _compact(pd.read_parquet(p, columns=QUEUE_COLS), keep_text=("reasons",)) \
+        if p.exists() else None
 
 
-@st.cache_data
+@st.cache_resource
 def load_test_scores():
     p = config.OUTPUTS_DIR / "lemis_test_scores.parquet"
-    return pd.read_parquet(p) if p.exists() else None
+    return _compact(pd.read_parquet(p, columns=EVAL_COLS)) if p.exists() else None
 
 
 @st.cache_data
