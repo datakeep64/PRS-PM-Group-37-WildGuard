@@ -194,6 +194,8 @@ def page_queue():
            "or law-enforcement trade (purpose L) are excluded from ranking." if cs else ""
     st.caption("All priority records (top 1% per year) plus a random sample of the rest, "
                "CITES 2015-2024 animal trade. Select a row to see its flag card." + excl)
+    st.caption("A flag is a statistical prompt for human review, not a finding of wrongdoing: "
+               "CITES records permitted trade, and most flagged records will be lawful.")
     f1, f2, f3, f4, f5 = st.columns([1, 1, 1.2, 1.2, 1.2])
     tier = f1.selectbox("Tier", ["priority", "review", "routine", "all"])
     years = f2.multiselect("Year", sorted(q["year"].unique()), placeholder="All years")

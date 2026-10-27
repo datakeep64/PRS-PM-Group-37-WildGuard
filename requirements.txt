@@ -1,0 +1,13 @@
+# Runtime dependencies of the WildGuard Streamlit app (read by Streamlit Community Cloud).
+# The full pipeline's dependencies are in "SYSTEM CODE/requirements.txt".
+# Versions match those the committed models were trained with. Use Python 3.11.
+pandas==2.2.3
+numpy==1.26.4
+scipy==1.17.1
+scikit-learn==1.5.2
+xgboost-cpu==2.1.3; sys_platform == "linux"
+xgboost==2.1.3; sys_platform != "linux"
+pyarrow==17.0.0
+streamlit==1.40.2
+plotly==5.24.1
+joblib==1.4.2
