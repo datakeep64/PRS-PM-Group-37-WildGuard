@@ -1,0 +1,10 @@
+  CITES features 2015: 980,558 rows
+  CITES features 2016: 949,443 rows
+  CITES features 2017: 908,315 rows
+  CITES features 2018: 848,215 rows
+  CITES features 2019: 822,985 rows
+  CITES features 2020: 667,829 rows
+  CITES features 2021: 755,935 rows
+  CITES features 2022: 794,191 rows
+  CITES features 2023: 832,770 rows
+  CITES features 2024: 686,852 rows

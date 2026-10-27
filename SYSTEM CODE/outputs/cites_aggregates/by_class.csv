@@ -1,0 +1,15 @@
+class,records,priority_share,mean_risk_percentile
+Bivalvia,14326,0.09088,0.69794
+Gastropoda,18182,0.07315,0.8833
+Mammalia,669051,0.04586,0.64515
+Elasmobranchii,40680,0.02817,0.4552
+Aves,452255,0.01202,0.55277
+Anthozoa,1374548,0.01072,0.37122
+Reptilia,5220111,0.00506,0.49456
+Insecta,9359,0.00427,0.61824
+Actinopteri,380742,0.00253,0.71118
+Holothuroidea,2098,0.00143,0.74717
+Amphibia,16959,0.00124,0.31815
+Hydrozoa,7648,0.00092,0.34241
+Arachnida,3933,0.0,0.24578
+Hirudinoidea,3319,0.0,0.3722

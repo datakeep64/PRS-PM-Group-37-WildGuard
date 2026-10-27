@@ -1,0 +1,30 @@
+{
+  "unodc_consistency": {
+    "n_groups": 14,
+    "spearman_vs_seizure_to_trade_ratio": {
+      "wildguard_priority_share": {
+        "spearman_rho": 0.864,
+        "p_value": 0.0001
+      },
+      "supervised_only_top1": {
+        "spearman_rho": 0.868,
+        "p_value": 0.0001
+      },
+      "unsupervised_only_top1": {
+        "spearman_rho": 0.846,
+        "p_value": 0.0001
+      },
+      "listing_rule_top1": {
+        "spearman_rho": 0.334,
+        "p_value": 0.2425
+      }
+    }
+  },
+  "confiscated_proxy": {
+    "n_source_I": 32959,
+    "share_source_I": 0.003996438502633595,
+    "auc_no_source_transfer_model": 0.8739,
+    "auc_random": 0.5009,
+    "share_of_source_I_in_top_5pct": 0.6872781334385145
+  }
+}

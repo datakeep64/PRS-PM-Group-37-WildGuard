@@ -1,0 +1,4 @@
+{
+  "stack": "transfer",
+  "chosen_by": "importance weighting is deployed only if (1) in experiment A it beats the best label-free transfer (naive or re-normalised) by > 0.005 PR-AUC on the labelled held-out target region, and (2) it is not worse than the unweighted model on held-out LEMIS records of CITES-listed taxa"
+}
