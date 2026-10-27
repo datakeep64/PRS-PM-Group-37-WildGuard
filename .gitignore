@@ -1,0 +1,13 @@
+# Python / env
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints/
+
+# Raw and large processed data (download with DATA/download_data.py; rebuild with run_pipeline.sh)
+DATA/raw/
+DATA/processed/
+
+# Office lock files
+~$*

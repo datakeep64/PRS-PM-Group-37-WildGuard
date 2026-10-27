@@ -1,0 +1,448 @@
+field,code,value,post_feb_2013
+action,C,Cleared,TRUE
+action,R,Refused,TRUE
+country,AD,Andorra,TRUE
+country,AE,United Arab Emirates,TRUE
+country,AF,Afghanistan,TRUE
+country,AG,Antigua & Barbuda,TRUE
+country,AI,Anguilla,TRUE
+country,AL,Albania,TRUE
+country,AM,Armenia,TRUE
+country,AN,Curacao / Netherlands Antilles,FALSE
+country,AO,Angola,TRUE
+country,AQ,Antarctica,TRUE
+country,AR,Argentina,TRUE
+country,AT,Austria,TRUE
+country,AU,Australia,TRUE
+country,AW,Aruba,TRUE
+country,AX,Aland Islands,TRUE
+country,AZ,Azerbaijan,TRUE
+country,BA,Bosnia-Herzegovina,TRUE
+country,BB,Barbados,TRUE
+country,BD,Bangladesh,TRUE
+country,BE,Belgium,TRUE
+country,BF,Burkina Faso,TRUE
+country,BG,Bulgaria,TRUE
+country,BH,Bahrain,TRUE
+country,BI,Burundi,TRUE
+country,BJ,Benin,TRUE
+country,BM,Bermuda,TRUE
+country,BN,Brunei Darussalam,TRUE
+country,BO,Bolivia,TRUE
+country,BR,Brazil,TRUE
+country,BS,Bahamas,TRUE
+country,BT,Bhutan,TRUE
+country,BV,Bouvet Island,TRUE
+country,BW,Botswana,TRUE
+country,BY,Belarus,TRUE
+country,BZ,Belize,TRUE
+country,CA,Canada,TRUE
+country,CC,Cocos (Keeling) Islands,TRUE
+country,CD,Democratic Republic of the Congo,TRUE
+country,CF,Central African Republic,TRUE
+country,CG,Congo,TRUE
+country,CH,Switzerland,TRUE
+country,CI,Cote d’Ivoire,TRUE
+country,CK,Cook Islands,TRUE
+country,CL,Chile,TRUE
+country,CM,Cameroon,TRUE
+country,CN,China,TRUE
+country,CO,Colombia,TRUE
+country,CR,Costa Rica,TRUE
+country,CU,Cuba,TRUE
+country,CV,Cape Verde,TRUE
+country,CX,Christmas Island,TRUE
+country,CY,Cyprus,TRUE
+country,CZ,Czech Republic,TRUE
+country,DE,Germany,TRUE
+country,DJ,Djibouti,TRUE
+country,DK,Denmark,TRUE
+country,DM,Dominica,TRUE
+country,DO,Dominican Republic,TRUE
+country,DZ,Algeria,TRUE
+country,EC,Ecuador,TRUE
+country,EE,Estonia,TRUE
+country,EG,Egypt,TRUE
+country,EH,Western Sahara,TRUE
+country,ER,Eritrea,TRUE
+country,ES,Spain,TRUE
+country,ET,Ethiopia,TRUE
+country,FI,Finland,TRUE
+country,FJ,Fiji,TRUE
+country,FK,Falkland Islands (Malvinas),TRUE
+country,FM,Federated States of Micronesia,TRUE
+country,FO,Faeroe Islands,TRUE
+country,FR,France,TRUE
+country,GA,Gabon,TRUE
+country,GB,United Kingdom,TRUE
+country,GD,Grenada,TRUE
+country,GE,Georgia,TRUE
+country,GF,French Guiana,TRUE
+country,GH,Ghana,TRUE
+country,GI,Gibraltar,TRUE
+country,GL,Greenland,TRUE
+country,GM,Gambia,TRUE
+country,GN,Guinea,TRUE
+country,GP,Guadeloupe,TRUE
+country,GQ,Equatorial Guinea,TRUE
+country,GR,Greece,TRUE
+country,GS,South Georgia & Sandwich Islands,TRUE
+country,GT,Guatemala,TRUE
+country,GW,Guinea-Bissau,TRUE
+country,GY,Guyana,TRUE
+country,HK,Hong Kong,TRUE
+country,HM,Heard Island & McDonald Islands,TRUE
+country,HN,Honduras,TRUE
+country,HR,Croatia,TRUE
+country,HT,Haiti,TRUE
+country,HU,Hungary,TRUE
+country,ID,Indonesia,TRUE
+country,IE,Ireland,TRUE
+country,IL,Israel,TRUE
+country,IM,Isle of Man,TRUE
+country,IN,India,TRUE
+country,IO,British Indian Ocean Territory,TRUE
+country,IQ,Iraq,TRUE
+country,IR,Islamic Republic of Iran,TRUE
+country,IS,Iceland,TRUE
+country,IT,Italy,TRUE
+country,JM,Jamaica,TRUE
+country,JO,Jordan,TRUE
+country,JP,Japan,TRUE
+country,KE,Kenya,TRUE
+country,KG,Kyrgyzstan,TRUE
+country,KH,Cambodia,TRUE
+country,KI,Kiribati,TRUE
+country,KM,Comoros,TRUE
+country,KN,Saint Kitts & Nevis,TRUE
+country,KP,Democratic People’s Republic of Korea (North),TRUE
+country,KR,Republic of Korea (South),TRUE
+country,KW,Kuwait,TRUE
+country,KY,Cayman Islands,TRUE
+country,KZ,Kazakhstan,TRUE
+country,LA,Lao People’s Democratic Republic,TRUE
+country,LB,Lebanon,TRUE
+country,LC,Saint Lucia,TRUE
+country,LI,Liechtenstein,TRUE
+country,LK,Sri Lanka,TRUE
+country,LR,Liberia,TRUE
+country,LS,Lesotho,TRUE
+country,LT,Lithuania,TRUE
+country,LU,Luxembourg,TRUE
+country,LV,Latvia,TRUE
+country,LY,Libyan Arab Jamahiriya,TRUE
+country,MA,Morocco,TRUE
+country,MC,Monaco,TRUE
+country,MD,Republic of Moldova,TRUE
+country,ME,Montenegro,TRUE
+country,MG,Madagascar,TRUE
+country,MH,Marshall Islands,TRUE
+country,MK,Macedonia,TRUE
+country,ML,Mali,TRUE
+country,MM,Myanmar (Burma),TRUE
+country,MN,Mongolia,TRUE
+country,MO,Macao,TRUE
+country,MQ,Martinique,TRUE
+country,MR,Mauritania,TRUE
+country,MS,Montserrat,TRUE
+country,MT,Malta,TRUE
+country,MU,Mauritius,TRUE
+country,MV,Maldives,TRUE
+country,MW,Malawi,TRUE
+country,MX,Mexico,TRUE
+country,MY,Malaysia,TRUE
+country,MZ,Mozambique,TRUE
+country,"NA",Namibia,TRUE
+country,NC,New Caledonia,TRUE
+country,NE,Niger,TRUE
+country,NF,Norfolk Island,TRUE
+country,NG,Nigeria,TRUE
+country,NI,Nicaragua,TRUE
+country,NL,Netherlands,TRUE
+country,NO,Norway,TRUE
+country,NP,Nepal,TRUE
+country,NR,Nauru,TRUE
+country,NU,Niue,TRUE
+country,NZ,New Zealand,TRUE
+country,OM,Oman,TRUE
+country,PA,Panama,TRUE
+country,PC,Pacific Islands (Trust Territory),NA
+country,PE,Peru,TRUE
+country,PF,French Polynesia (Tahiti),TRUE
+country,PG,Papua New Guinea,TRUE
+country,PH,Philippines,TRUE
+country,PK,Pakistan,TRUE
+country,PL,Poland,TRUE
+country,PM,Saint Pierre & Miquelon,TRUE
+country,PN,Pitcairn,TRUE
+country,PS,"Palestinian Territory, occupied",FALSE
+country,PT,Portugal,TRUE
+country,PW,Palau,TRUE
+country,PY,Paraguay,TRUE
+country,QA,Qatar,TRUE
+country,RE,Reunion,TRUE
+country,RO,Romania,TRUE
+country,RS,Serbia,TRUE
+country,RU,Russian Federation,TRUE
+country,RW,Rwanda,TRUE
+country,SA,Saudi Arabia,TRUE
+country,SB,Solomon Islands,TRUE
+country,SC,Seychelles,TRUE
+country,SD,Sudan,TRUE
+country,SE,Sweden,TRUE
+country,SG,Singapore,TRUE
+country,SH,"Saint Helena, Ascension, and Tristan da Cunha",TRUE
+country,SI,Slovenia,TRUE
+country,SJ,Svalbard & Jan Mayen Islands,TRUE
+country,SK,Slovakia,TRUE
+country,SL,Sierra Leone,TRUE
+country,SM,San Marino,TRUE
+country,SN,Senegal,TRUE
+country,SO,Somalia,TRUE
+country,SR,Suriname,TRUE
+country,ST,Sao Tome & Principe,TRUE
+country,SV,El Salvador,TRUE
+country,SY,Syrian Arab Republic,TRUE
+country,SZ,Swaziland,TRUE
+country,TC,Turks & Caicos Islands,TRUE
+country,TD,Chad,TRUE
+country,TF,French Southern Territories,TRUE
+country,TG,Togo,TRUE
+country,TH,Thailand,TRUE
+country,TJ,Tajikistan,TRUE
+country,TK,Tokelau,TRUE
+country,TL,Timor-Leste,TRUE
+country,TM,Turkmenistan,TRUE
+country,TN,Tunisia,TRUE
+country,TO,Tonga,TRUE
+country,TR,Turkey,TRUE
+country,TT,Trinidad & Tobago,TRUE
+country,TV,Tuvalu,TRUE
+country,TW,Taiwan (Province of China),TRUE
+country,TZ,United Republic of Tanzania,TRUE
+country,UA,Ukraine,TRUE
+country,UG,Uganda,TRUE
+country,US,United States,TRUE
+country,UY,Uruguay,TRUE
+country,UZ,Uzbekistan,TRUE
+country,VA,Holy See (Vatican City),TRUE
+country,VC,Saint Vincent & The Grenadines,TRUE
+country,VE,Venezuela,TRUE
+country,VG,British Virgin Islands,TRUE
+country,VN,Vietnam,TRUE
+country,VS,Various,TRUE
+country,VU,Vanuatu,TRUE
+country,WF,Wallis & Futuna Islands,TRUE
+country,WS,"Samoa, Western",TRUE
+country,XX,Unknown,TRUE
+country,YE,Yemen,TRUE
+country,YT,Mayotte,TRUE
+country,YU,Yugoslavia,NA
+country,ZA,South Africa,TRUE
+country,ZM,Zambia,TRUE
+country,ZR,Zaire,NA
+country,ZW,Zimbabwe,TRUE
+country,ZZ,High Seas,TRUE
+description,BAL,Baleen,TRUE
+description,BAR,"Bark (raw, dried, powdered, unprocessed)",TRUE
+description,BOC,Bone product or carving,TRUE
+description,BOD,Dead animal (whole animal),TRUE
+description,BON,"Bones (including jaws, but not skulls)",TRUE
+description,BOP,Bone pieces (not manufactured),TRUE
+description,BUL,"Bulbs, corms or tubers",TRUE
+description,CAL,Calipees (turtle cartilage for soup),TRUE
+description,CAP,Carapaces (raw or unworked),TRUE
+description,CAR,"Carvings (other than bone, horn or ivory)",TRUE
+description,CAV,Caviar (unfertilized dead processed sturgeon or paddlefish eggs),TRUE
+description,CHP,Chips (timber),TRUE
+description,CLA,Claw (including talon),TRUE
+description,CLO,Cloth,TRUE
+description,COR,"Coral (raw or unworked, excluding live or coral rock)",TRUE
+description,CPR,Coral products,TRUE
+description,CUL,Cultures of artificially propagated plants,TRUE
+description,CUT,Cuttings (plant cuttings or divisions),TRUE
+description,DEA,Dead specimen (live specimen that died during shipment),TRUE
+description,DER,Derivative (except those included elsewhere),TRUE
+description,DPL,Dried plants,TRUE
+description,EAR,Ear (except when part of whole trophy),TRUE
+description,EGG,Egg (whole dead or blown excluding caviar),TRUE
+description,EGL,Eggs (live),TRUE
+description,ESH,Eggshell (raw or unworked),TRUE
+description,EXT,Extracts,TRUE
+description,FEA,Feathers,TRUE
+description,FIB,"Fiber (plant fiber, tennis racket string)",TRUE
+description,FIG,"Fingerlings (juvenile fish for the aquarium trade, hatchery or released)",TRUE
+description,FIN,"Fin (fresh, frozen or dried fins or parts)",TRUE
+description,FLO,Flowers,TRUE
+description,FOO,Foot,TRUE
+description,FPT,Flower pot (made of tree fern or other plant fiber),TRUE
+description,FRU,Fruit,TRUE
+description,GAB,Gall bladders,TRUE
+description,GAL,Gall (bile),TRUE
+description,GAR,Garment (excluding shoe or trim),TRUE
+description,GEN,Genitalia (castrate and dried penis),TRUE
+description,GRS,Graft rootstocks,TRUE
+description,HAI,Hair,TRUE
+description,HAP,"Hair product (including  paint brushes, etc.)",TRUE
+description,HOC,Horn carving (including horn or antler products),TRUE
+description,HOP,Horn pieces (not manufactured),TRUE
+description,HOR,Horn (substantially whole including antlers),TRUE
+description,IJW,Ivory jewelry,TRUE
+description,IVC,Ivory carvings,TRUE
+description,IVP,"Ivory pieces (not manufactured, includes scraps)",TRUE
+description,JWL,Jewelry (other than ivory jewelry),TRUE
+description,KEY,Ivory piano key (# of keys),TRUE
+description,LEG,Frog legs,TRUE
+description,LIV,Live specimens (live animals or plants),TRUE
+description,LOG,"Logs and saw logs (all wood in the rough for processing into sawn wood, pulpwood or veneer)",TRUE
+description,LPL,"Leather product (large manufactured including briefcase, suitcase, furniture)",TRUE
+description,LPS,"Leather product (small manufactured including belt, wallet, watchband)",TRUE
+description,LVS,Leaves,TRUE
+description,MEA,Meat,TRUE
+description,MED,Medicinal part or product,TRUE
+description,MUS,Musk,TRUE
+description,NES,Nest (including product),TRUE
+description,OIL,Oil,TRUE
+description,PIV,Piano with ivory keys (# of pianos),TRUE
+description,PLA,Plates of fur skins (include rugs if made from several skins),TRUE
+description,PLY,Plywood (3 or more sheets of wood glued and pressed one on another),TRUE
+description,POW,Powder,TRUE
+description,ROC,"Live Rock (e.g., Coral Rock)",TRUE
+description,ROO,Root (dead),TRUE
+description,RUG,Rugs (rugs if made from one skin only),TRUE
+description,SAW,Sawn wood (sawn lengthwise or produced by profile-chipping; normally exceeds 6mm in thickness),TRUE
+description,SCA,"Scale (turtle, other reptile, fish, pangolin)",TRUE
+description,SDL,Seedling,TRUE
+description,SEE,Seed,TRUE
+description,SHE,"Shell (mollusc, raw or unworked)",TRUE
+description,SHO,Shoe (including boots),TRUE
+description,SID,"Side (including flank, except tinga frame)",TRUE
+description,SKE,Skeleton (substantially whole),TRUE
+description,SKI,"Skin (substantially whole, including tinga frames)",TRUE
+description,SKP,Skin piece (raw or tanned including scraps),TRUE
+description,SKU,Skull,TRUE
+description,SOU,Soup,TRUE
+description,SPE,Specimen (scientific or museum),TRUE
+description,SPR,Shell product (mollusc or turtle),TRUE
+description,STE,Stems (plant stems),TRUE
+description,SWI,"Swim bladder (hydrostatic organ, including isinglass, sturgeon glue)",TRUE
+description,TAI,Tails,TRUE
+description,TEE,Teeth (excluding tusk),TRUE
+description,TIM,Timber (raw except log or sawn wood),TRUE
+description,TRI,"Trim (shoe, garment, or decorative)",TRUE
+description,TRO,Trophy (all the parts of one animal),TRUE
+description,TUS,"Tusks (substantially whole tusks, worked or not)",TRUE
+description,UNS,Unspecified,TRUE
+description,VEN,"Veneer (thin layers of wood of uniform thickness, usually less than 6mm)",TRUE
+description,WAX,Wax (including ambergris),TRUE
+description,WNG,Wing,TRUE
+description,WPR,"Wood product (including furniture, rainsticks)",TRUE
+disposition,A,Abandoned,TRUE
+disposition,C,Cleared,TRUE
+disposition,R,Reexport,TRUE
+disposition,S,Seized,TRUE
+port,1,Region 1,TRUE
+port,2,Region 2,TRUE
+port,3,Region 3,TRUE
+port,4,Region 4,TRUE
+port,5,Region 5,TRUE
+port,6,Region 6,TRUE
+port,7,Region 7,TRUE
+port,AG,Agana,TRUE
+port,AL,Alcan,TRUE
+port,AN,Anchorage,TRUE
+port,AT,Atlanta,TRUE
+port,BA,Baltimore,TRUE
+port,BL,Blaine,TRUE
+port,BN,Buffalo,TRUE
+port,BO,Boston,TRUE
+port,BV,Brownsville,TRUE
+port,CA,Calais,TRUE
+port,CH,Chicago,TRUE
+port,CL,Cleveland,TRUE
+port,CP,Champlain,TRUE
+port,CX,Calexico,TRUE
+port,DE,Detroit,TRUE
+port,DF,Dallas/Fort Worth,TRUE
+port,DG,Douglas,TRUE
+port,DL,Derby Line,TRUE
+port,DN,Denver,TRUE
+port,DR,Del Rio,TRUE
+port,DS,Dunseith,TRUE
+port,DU,Dulles Int'l Airport,TRUE
+port,EA,Eastport,TRUE
+port,EL,El Paso,TRUE
+port,FB,Fairbanks,TRUE
+port,GP,Grand Portage,TRUE
+port,HA,Honolulu,TRUE
+port,HN,Houston,TRUE
+port,HO,Houlton,TRUE
+port,HS,Highgate Springs,TRUE
+port,IF,International Falls,TRUE
+port,JK,Jackman,TRUE
+port,JU,Juneau,TRUE
+port,LA,Los Angeles,TRUE
+port,LK,Lukeville,TRUE
+port,LO,Louisville,TRUE
+port,LR,Laredo,TRUE
+port,LV,Las Vegas,TRUE
+port,MC,McAllen,TRUE
+port,ME,Memphis,TRUE
+port,MI,Miami,TRUE
+port,MP,Minneapolis/St. Paul,TRUE
+port,NF,Norfolk,TRUE
+port,NG,Nogales,TRUE
+port,NO,New Orleans,TRUE
+port,NW,Newark,TRUE
+port,NY,New York,TRUE
+port,PA,Philadelphia,TRUE
+port,PB,Pembina,TRUE
+port,PH,Port Huron,TRUE
+port,PL,Portal,TRUE
+port,PT,Portland,TRUE
+port,PX,Phoenix,TRUE
+port,RY,Raymond,TRUE
+port,SE,Seattle,TRUE
+port,SF,San Francisco,TRUE
+port,SJ,San Juan,TRUE
+port,SL,San Luis,TRUE
+port,SP,Saipan,TRUE
+port,SS,Sault Sainte Marie,TRUE
+port,SU,Sumas,TRUE
+port,SW,Sweetgrass,TRUE
+port,SY,San Diego/San Ysidro,TRUE
+port,TP,Tampa,TRUE
+port,XX,Unknown,TRUE
+purpose,B,Breeding in captivity or artificial propagation,TRUE
+purpose,E,Educational,TRUE
+purpose,G,Botanic gardens,TRUE
+purpose,H,Hunting Trophies,TRUE
+purpose,L,Law Enforcement / Judicial / Forensic use only,TRUE
+purpose,M,Biomedical research,TRUE
+purpose,P,Personal,TRUE
+purpose,Q,Circuses/traveling exhibitions,TRUE
+purpose,S,Scientific,TRUE
+purpose,T,Commercial,TRUE
+purpose,Y,Reintroduction/introduction into the wild,TRUE
+purpose,Z,Zoos,TRUE
+source,A,"Plants that are artificially propagated, parts and derivatives",TRUE
+source,C,"Animals bred in captivity, parts and derivatives",TRUE
+source,D,Commercially bred,TRUE
+source,F,"Animals born in captivity, Resolution conf. 10.16",TRUE
+source,I,Confiscated or seized specimen,TRUE
+source,P,Pre-convention,TRUE
+source,R,Specimens originating from a ranching operation,TRUE
+source,U,Source unknown (must be justified),TRUE
+source,W,Specimens taken from the wild,TRUE
+unit,C2,Square Centimeters,TRUE
+unit,C3,Cubic Centimeters,TRUE
+unit,CM,Centimeters,TRUE
+unit,GM,Grams,TRUE
+unit,KG,Kilograms,TRUE
+unit,LT,Liters,TRUE
+unit,M2,Square Meters,TRUE
+unit,M3,Cubic Meters,TRUE
+unit,MG,Milligrams,TRUE
+unit,ML,Milliliters,TRUE
+unit,MT,Meters,TRUE
+unit,NO,Number of Specimens,TRUE
