@@ -1,0 +1,35 @@
+{
+  "lemis": {
+    "record": 3565869,
+    "version": "1.1.0",
+    "doi": "10.5281/zenodo.3565869",
+    "published": "2019-12-06",
+    "md5": "434fac9386cba5e23ad72bd1403e91c8",
+    "file": "lemis_2000_2014_cleaned.csv",
+    "line_items": 5512706,
+    "shipments": 2088676,
+    "years": [
+      2000,
+      2014
+    ]
+  },
+  "cites": {
+    "version": "2026.1",
+    "extracted": "9 June 2026",
+    "files": 59,
+    "records": 29170051,
+    "years": [
+      1975,
+      2026
+    ],
+    "animal_records_scored": 8247093,
+    "scored_years": [
+      2015,
+      2024
+    ],
+    "head_files": [
+      "trade_db_31.csv",
+      "trade_db_32.csv"
+    ]
+  }
+}

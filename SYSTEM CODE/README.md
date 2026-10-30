@@ -13,7 +13,7 @@ streamlit run "SYSTEM CODE/app/app.py"
 
 | Page | What it shows |
 |---|---|
-| Overview | What the system does, headline results, what a flag does and does not mean |
+| Overview | What the system does, headline results, what a flag does and does not mean; the two source datasets (version, size, period used) with their first five rows as published |
 | Review queue | CITES 2015-2024 records ranked for human review; select one for its flag card and reasons |
 | Check a shipment | Score any record - as a CITES record (transfer model) or a US import with declared value (full model). Includes the real Indian star tortoise seizure as a preset |
 | Does it work? | Inspection-budget slider over held-out LEMIS 2013-2014 shipments: cases caught vs random and vs a listing rule; model comparison; triage bands; domain-shift results |
@@ -32,6 +32,7 @@ Set `WILDGUARD_SAMPLE=0.03` to smoke-test `train.py` on a 3% sample in about a m
 
 | Step | Module | Technique | Output |
 |---|---|---|---|
+| Source data | `datasets.py` | Release version (Zenodo record, CITES release notes), record counts and first rows, read from the raw files | `outputs/datasets.json`, `DATA/samples/*_head.csv` |
 | 1. Acquire & align | `prepare_data.py`, `schema_alignment.py` | Knowledge modelling: LEMIS ↔ CITES code crosswalk, unit conversion, CITES-appendix lookup | `DATA/processed/*_aligned.parquet` |
 | 2. Features | `features.py` | Robust peer-group statistics (median/MAD), route and purpose/source rarity | relative risk features |
 | 3. Supervised | `models.py`, `train.py` | XGBoost (+ Random Forest, Logistic Regression for comparison), temporal split, early stopping | `models/*_stack.joblib` |

@@ -24,12 +24,16 @@ Positive rate: 1.74% overall (1.59% in the 2013–2014 test years).
 DATA/
 ├── download_data.py        fetches LEMIS from Zenodo; instructions for CITES
 ├── raw/                    (not in git) raw CSVs - see download_data.py
+│   ├── lemis/              the LEMIS files + zenodo_record.json (version, checksum)
+│   └── cites/              the whole CITES zip: trade_db_*.csv + supplementary information .docx
 ├── processed/              (not in git) aligned parquet files rebuilt by the pipeline
 ├── reference/              LEMIS codebook (country, port, purpose, source, unit, product codes)
 └── samples/                small extracts committed so the data can be inspected and the app runs
     ├── lemis_aligned_sample.csv       1% random sample of aligned LEMIS imports, with labels
     ├── cites_aligned_sample.csv       0.5% random sample of aligned CITES animal records 2015-2024
-    └── cites_review_queue.parquet     all priority-tier CITES records + 40k others, scored, with reasons
+    ├── cites_review_queue.parquet     all priority-tier CITES records + 40k others, scored, with reasons
+    ├── lemis_head.csv                 first 5 rows of the raw LEMIS CSV, verbatim (app Overview)
+    └── cites_head.csv                 first 5 animal records 2015-2024 of the raw CITES download, verbatim (app Overview)
 ```
 
 The raw files exceed GitHub's 100 MB file limit, so they are not committed. To rebuild
@@ -39,6 +43,13 @@ everything from scratch:
 python DATA/download_data.py                 # LEMIS automatically; CITES instructions printed
 bash "SYSTEM CODE/run_pipeline.sh"
 ```
+
+**Moving to a new release.** The app's Overview takes each dataset's version, size and first
+rows from the raw files (`SYSTEM CODE/wildguard/datasets.py`), not from the code. For a new
+CITES annual release, empty `raw/cites/`, unzip the new download there in full and rerun the
+pipeline; for a new LEMIS version on Zenodo, delete `raw/lemis/` and rerun `download_data.py`
+and the pipeline. The models, review queue and Overview then all reflect the same release -
+update the report's data section to match.
 
 ## Schema alignment (the knowledge model)
 

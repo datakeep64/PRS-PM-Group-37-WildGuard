@@ -5,6 +5,7 @@ slides and the app.
 
 | File | Written by | Contents |
 |---|---|---|
+| `datasets.json` | `datasets.py` | Version, size and years of LEMIS and CITES as read from the raw files, and which CITES files the preview rows come from (app Overview) |
 | `lemis_evaluation.json` | `train.py` | Held-out 2013-2014 metrics for every model and baseline, confidence bands, stacker weights, K-Means silhouette/stability, feature importance |
 | `lemis_evaluation_table.csv` | `train.py` | The same metrics as a table (one row per model) |
 | `lemis_test_scores.parquet` | `train.py` | Per-line-item held-out scores of the main models (used by the app's "Does it work?" page) |

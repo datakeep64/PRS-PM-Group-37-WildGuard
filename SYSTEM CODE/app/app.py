@@ -3,7 +3,7 @@
     streamlit run "SYSTEM CODE/app/app.py"
 
 Pages
-    Overview          what the system does, headline results, caveats
+    Overview          what the system does, headline results, caveats, the two source datasets
     Review queue      CITES records ranked for human review, each with plain-language reasons
     Check a shipment  score one record (CITES-style, or a US import declaration with value)
     Does it work?     triage simulation on held-out LEMIS years with real enforcement outcomes
@@ -39,6 +39,28 @@ PRODUCT_GROUPS = ["live", "live_eggs", "bodies", "trophies", "skins", "skin_piec
                   "fins", "extracts_medicine", "carvings_jewellery", "body_parts", "other"]
 CLASSES = ["Reptilia", "Mammalia", "Aves", "Anthozoa", "Actinopteri", "Amphibia", "Bivalvia",
            "Gastropoda", "Insecta", "Elasmobranchii", "Hydrozoa", "Arachnida"]
+# column help for the CITES preview (LEMIS's comes from its own codebook, DATA/reference)
+CITES_FIELDS = {
+    "Id": "Unique record identifier, unchanged across releases",
+    "Year": "Year of the trade record",
+    "Appendix": "CITES Appendix of the taxon (I, II, III; N = not listed)",
+    "Taxon": "Scientific name", "Class": "Taxonomic class (blank for plants)",
+    "Order": "Taxonomic order", "Family": "Taxonomic family", "Genus": "Genus",
+    "Term": "Specimen traded (e.g. live, skins, meat)", "Quantity": "Quantity traded, in Unit",
+    "Unit": "Unit of the quantity (blank = number of specimens)",
+    "Importer": "Importing country (ISO 3166 alpha-2)",
+    "Exporter": "Exporting or re-exporting country (ISO 3166 alpha-2)",
+    "Origin": "Country of origin, for re-exports (ISO 3166 alpha-2)",
+    "Purpose": "Purpose code (e.g. T commercial, P personal, Z zoo)",
+    "Source": "Source code (e.g. W wild, C bred in captivity, I confiscated)",
+    "Reporter.type": "Who reported the record: E exporter, I importer",
+    "Import.permit.RandomID": "Anonymised ID replacing the confidential import permit number",
+    "Export.permit.RandomID": "Anonymised ID replacing the confidential export or re-export "
+                              "permit number (same permit, same ID)",
+    "Origin.permit.RandomID": "Anonymised ID replacing the confidential permit from the "
+                              "country of origin",
+    "Ifs.permit.RandomID": "Anonymised ID replacing the introduction-from-the-sea certificate "
+                           "number"}
 
 
 # ----------------------------------------------------------------------------- loaders
@@ -83,6 +105,19 @@ def load_test_scores():
 def load_csv(name):
     p = config.OUTPUTS_DIR / name
     return pd.read_csv(p) if p.exists() else None
+
+
+@st.cache_data
+def load_head(name):
+    """First rows of a source dataset as written by wildguard.datasets - all text, verbatim."""
+    p = config.SAMPLES_DIR / f"{name}_head.csv"
+    return pd.read_csv(p, dtype=str, keep_default_na=False) if p.exists() else None
+
+
+@st.cache_data
+def lemis_fields():
+    p = config.DATA_DIR / "reference" / "lemis_metadata.csv"
+    return dict(pd.read_csv(p).values) if p.exists() else {}
 
 
 @st.cache_resource
@@ -174,6 +209,41 @@ def page_overview():
         "LEMIS reflects US enforcement; CITES is global, mostly permitted trade, so absolute "
         "probabilities do not transfer - the system ranks CITES records by inspection budget "
         "instead.")
+
+    ds = load_json(config.DATASETS_JSON)
+    if not ds:
+        return
+    # every value below is read from the raw files by wildguard.datasets, so a rebuild on a new
+    # release updates this section; the table mirrors section 3.1 of the final report
+    le, ci = ds["lemis"], ds["cites"]
+    (s0, s1), (t0, t1) = ci["scored_years"], (config.TEST_YEARS[0], config.TEST_YEARS[-1])
+    st.subheader("The data")
+    st.markdown(
+        "| | LEMIS (US Fish & Wildlife Service) | CITES Trade Database |\n|---|---|---|\n"
+        "| Content | Every wildlife import declared to USFWS | Trade in CITES-listed species, "
+        "reported by all Parties |\n"
+        f"| Version | [Zenodo record {le['record']}](https://doi.org/{le['doi']}), v{le['version']} "
+        f"(published {le['published']}) | Full download v{ci['version']} (UNEP-WCMC)"
+        + (f", extracted {ci['extracted']}" if ci["extracted"] else "") + " |\n"
+        f"| Size | {le['line_items']:,} import line items in {le['shipments']:,} shipments | "
+        f"{ci['records']:,} records ({ci['years'][0]}–{ci['years'][1]}) |\n"
+        f"| Period used | {le['years'][0]}–{le['years'][1]} (all) | Animal records {s0}–{s1} for "
+        f"scoring ({ci['animal_records_scored']:,}); {t0}–{t1} US-reported records for the "
+        "alignment check |\n"
+        "| Labels | `action` (Cleared/Refused), `disposition` (Cleared/Seized/Abandoned/"
+        "Re-exported) | none |\n"
+        "| Declared value | yes (USD) | no |")
+    st.markdown("**First five rows of each dataset, exactly as published**")
+    st.caption(f"LEMIS · {le['file']}")
+    st.dataframe(load_head("lemis"), hide_index=True, use_container_width=True,
+                 column_config={c: st.column_config.Column(help=h) for c, h in lemis_fields().items()})
+    st.caption(f"CITES · the first five animal records from {s0}–{s1}, in download order "
+               f"({', '.join(ci['head_files'])} of {ci['files']} files)")
+    st.dataframe(load_head("cites"), hide_index=True, use_container_width=True,
+                 column_config={c: st.column_config.Column(help=h) for c, h in CITES_FIELDS.items()})
+    st.caption("Values are shown as they appear in the source files: LEMIS writes missing values as "
+               "NA; CITES leaves them blank and replaces confidential permit numbers with "
+               "anonymised IDs. Hover a column name for its meaning.")
 
 
 def flag_card(r):
@@ -554,6 +624,9 @@ with st.sidebar:
     choice = st.radio("Navigate", list(PAGES), label_visibility="collapsed",
                       index=SLUGS.get(st.query_params.get("page", ""), 0))
     st.caption("NUS-ISS PRS Practice Module · Group 37")
-    st.caption("Data: LEMIS (USFWS / EcoHealth Alliance, Zenodo v1.1.0); "
-               "CITES Trade Database full download v2026.1 (UNEP-WCMC for the CITES Secretariat).")
+    ds = load_json(config.DATASETS_JSON)
+    if ds:
+        st.caption(f"Data: LEMIS (USFWS / EcoHealth Alliance, Zenodo v{ds['lemis']['version']}); "
+                   f"CITES Trade Database full download v{ds['cites']['version']} "
+                   "(UNEP-WCMC for the CITES Secretariat).")
 PAGES[choice]()

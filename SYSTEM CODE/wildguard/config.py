@@ -11,7 +11,10 @@ REPO_DIR = CODE_DIR.parent
 DATA_DIR = Path(os.environ.get("WILDGUARD_DATA_DIR", REPO_DIR / "DATA"))
 
 RAW_LEMIS = DATA_DIR / "raw" / "lemis" / "lemis_2000_2014_cleaned.csv"
+RAW_LEMIS_RECORD = DATA_DIR / "raw" / "lemis" / "zenodo_record.json"   # written by download_data.py
 RAW_CITES_GLOB = str(DATA_DIR / "raw" / "cites" / "trade_db_*.csv")
+# release notes shipped in the CITES zip; they state the version and extraction date
+RAW_CITES_INFO_GLOB = str(DATA_DIR / "raw" / "cites" / "*supplementary information*.docx")
 PROCESSED_DIR = DATA_DIR / "processed"
 SAMPLES_DIR = DATA_DIR / "samples"
 
@@ -22,6 +25,7 @@ FIGURES_DIR = OUTPUTS_DIR / "figures"
 LEMIS_PARQUET = PROCESSED_DIR / "lemis_aligned.parquet"
 CITES_PARQUET = PROCESSED_DIR / "cites_aligned.parquet"
 CITES_SCORED_PARQUET = PROCESSED_DIR / "cites_scored.parquet"
+DATASETS_JSON = OUTPUTS_DIR / "datasets.json"
 
 # Temporal split on LEMIS (shipment year). Test years are never used for fitting
 # models, peer-group statistics, thresholds or the hybrid combiner.

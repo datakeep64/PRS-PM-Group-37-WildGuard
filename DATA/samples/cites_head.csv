@@ -1,0 +1,6 @@
+Id,Year,Appendix,Taxon,Class,Order,Family,Genus,Term,Quantity,Unit,Importer,Exporter,Origin,Purpose,Source,Reporter.type,Import.permit.RandomID,Export.permit.RandomID,Origin.permit.RandomID,Ifs.permit.RandomID
+1716322431,2015,II,Panthera leo,Mammalia,Carnivora,Felidae,Panthera,live,3,,CI,ZA,,Z,C,I,50c48ff087,cad7c1baaa,,
+8657026533,2015,II,Acipenser baerii,Actinopteri,Acipenseriformes,Acipenseridae,Acipenser,live,30000,kg,RU,BY,,T,C,E,,fdbf91dce7,,
+8718033533,2015,II,Acipenser baerii,Actinopteri,Acipenseriformes,Acipenseridae,Acipenser,caviar,2.4,kg,JO,BY,,T,C,E,,946c0a74d2,,
+7370441833,2015,II,Acipenser baerii,Actinopteri,Acipenseriformes,Acipenseridae,Acipenser,caviar,3,kg,RU,BY,,T,C,E,,27a75620d8,,
+1436624333,2015,II,Acipenser baerii,Actinopteri,Acipenseriformes,Acipenseridae,Acipenser,caviar,0.3,kg,RU,BY,,T,C,E,,76e172bb66,,

@@ -1,0 +1,6 @@
+control_number,species_code,taxa,class,genus,species,subspecies,specific_name,generic_name,description,quantity,unit,value,country_origin,country_imp_exp,purpose,source,action,disposition,disposition_date,disposition_year,shipment_date,shipment_year,import_export,port,us_co,foreign_co,cleaning_notes
+2000694058,CY0?,reptile,Reptilia,Crocodylus,sp.,NA,NA,CROCODILE,SHO,1,NO,0,XX,MX,non-standard value,U,R,S,2000-01-03,2000,2000-01-01,2000,I,EL,NA,NA,Original value in 'purpose' column: N
+2000696784,CIRA,coral,Anthozoa,Cirrhipathes,anguinas,NA,BLACK,CORAL,JWL,110,NO,425,TW,TW,T,W,C,C,2000-01-04,2000,2000-01-01,2000,I,HA,LUCORAL,LUPERLA INTL. GROUP CORP.,NA
+2000696784,CORJ,coral,Anthozoa,Corallium,japonicum,NA,RED,CORAL,JWL,9,NO,52,TW,TW,T,W,C,C,2000-01-04,2000,2000-01-01,2000,I,HA,LUCORAL,LUPERLA INTL. GROUP CORP.,NA
+2000696784,PIMX,shell,Bivalvia,Pinctada,maxima,NA,NA,OYSTER,JWL,289,NO,321,TW,TW,T,W,C,C,2000-01-04,2000,2000-01-01,2000,I,HA,LUCORAL,LUPERLA INTL. GROUP CORP.,NA
+2000696784,NA,NA,NA,NA,NA,NA,NA,NA,JWL,10,NO,60,TW,TW,T,W,C,C,2000-01-04,2000,2000-01-01,2000,I,HA,LUCORAL,LUPERLA INTL. GROUP CORP.,NA

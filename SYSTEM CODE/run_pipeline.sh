@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 PY="${PYTHON:-python}"
 
+$PY -m wildguard.datasets           # source versions, sizes and first rows (app Overview)
 $PY -m wildguard.prepare_data       # 1. acquire & align LEMIS + CITES onto one schema
 $PY -m wildguard.train              # 2-6. features, supervised/unsupervised/hybrid, LEMIS evaluation
 $PY -m wildguard.cites_features     # CITES features with peer norms learned from CITES
