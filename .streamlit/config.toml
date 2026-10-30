@@ -1,5 +1,11 @@
+# "Ranger station": canvas khaki, olive drab, bark brown, forest-green accent.
+# Fonts and the olive sidebar are set by the style block at the top of SYSTEM CODE/app/app.py.
 [theme]
-primaryColor = "#2C5F2D"
+base = "light"
+primaryColor = "#3E5C2E"
+backgroundColor = "#E3DAC2"
+secondaryBackgroundColor = "#D4C9AC"
+textColor = "#2B2A1F"
 
 [browser]
 gatherUsageStats = false

@@ -54,9 +54,22 @@ from wildguard.explain import COUNTRY, PURPOSE, SOURCE, explain_rows  # noqa: E4
 from wildguard.features import to_model_matrix  # noqa: E402
 from wildguard.schema_alignment import region  # noqa: E402
 
-st.set_page_config(page_title="WildGuard", page_icon="🐘", layout="wide")
+# "ranger station" palette, matching .streamlit/config.toml: forest green, trail-blaze orange,
+# slate, stone; khaki page, olive-drab sidebar, cream lettering
+GREEN, BLAZE, SLATE, GREY = "#3E5C2E", "#B5652B", "#5B7F95", "#8C8270"
+KHAKI, OLIVE, CREAM = "#E3DAC2", "#4A5A3A", "#EFE6CC"
+st.set_page_config(page_title="WildGuard", page_icon="🐘", layout="wide",
+                   initial_sidebar_state="expanded")
+# slab-serif headings like routed park signs; olive-drab sidebar with cream text
+st.markdown(f"""<style>
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;700&display=swap');
+h1, h2, h3, h4, h5, [data-testid="stMetricValue"], .wg-sign {{
+    font-family: 'Roboto Slab', Georgia, serif !important; }}
+[data-testid="stSidebar"] {{ background-color: {OLIVE}; }}
+[data-testid="stSidebar"] * {{ color: {CREAM} !important; }}
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {{ opacity: 0.75; }}
+</style>""", unsafe_allow_html=True)
 
-BLUE, ORANGE, AQUA, GREY = "#2a78d6", "#eb6834", "#1baf7a", "#a8a7a0"
 TIER_STYLE = {"priority": ("#d03b3b", "Priority review"), "review": ("#fab219", "Review"),
               "routine": ("#0ca30c", "Routine"), "auto-clear": ("#0ca30c", "Auto-clear")}
 PRODUCT_GROUPS = ["live", "live_eggs", "bodies", "trophies", "skins", "skin_pieces",
@@ -64,6 +77,10 @@ PRODUCT_GROUPS = ["live", "live_eggs", "bodies", "trophies", "skins", "skin_piec
                   "meat", "caviar", "ivory", "horn", "bone", "skulls", "teeth_claws",
                   "coral_raw", "coral_live_rock", "shells", "scales", "feathers", "eggs", "hair",
                   "fins", "extracts_medicine", "carvings_jewellery", "body_parts", "other"]
+CLASS_ICON = {"Reptilia": "🦎", "Mammalia": "🐘", "Aves": "🦜", "Anthozoa": "🪸",
+              "Actinopteri": "🐟", "Amphibia": "🐸", "Bivalvia": "🐚", "Gastropoda": "🐌",
+              "Insecta": "🦋", "Elasmobranchii": "🦈", "Hydrozoa": "🪼", "Arachnida": "🕷️",
+              "Holothuroidea": "🥒", "Hirudinoidea": "🪱"}
 CLASSES = ["Reptilia", "Mammalia", "Aves", "Anthozoa", "Actinopteri", "Amphibia", "Bivalvia",
            "Gastropoda", "Insecta", "Elasmobranchii", "Hydrozoa", "Arachnida"]
 # column help for the CITES preview (LEMIS's comes from its own codebook, DATA/reference)
@@ -174,6 +191,10 @@ def cname(code):
     return f"{COUNTRY.get(code, code)} ({code})"
 
 
+def with_icon(cls):
+    return f"{CLASS_ICON.get(cls, '🌿')} {cls}" if isinstance(cls, str) else "🌿"
+
+
 def prob(p):
     """Probability for display; avoids printing 100.0% for 0.9996."""
     return ">99.9%" if p > 0.999 else "<0.1%" if p < 0.001 else f"{p:.1%}"
@@ -187,8 +208,18 @@ def need(obj, what):
 
 # ------------------------------------------------------------------------------- pages
 def page_overview():
-    st.title("WildGuard")
-    st.markdown("##### Cross-dataset label transfer for wildlife-trade risk prioritisation")
+    animals = "🐢 🦜 🐊 🦈 🐘 🦎 🦋 🐍 🦏 🐅 🪸 🐒"
+    st.markdown(
+        f"<div style='background:linear-gradient(120deg,#2F4A2A 0%,{OLIVE} 60%,#5E6B3A 100%);"
+        f"border-radius:14px;padding:26px 30px 18px;margin-bottom:18px;color:{CREAM};"
+        f"box-shadow:inset 0 0 0 3px rgba(239,230,204,0.35)'>"
+        "<div class='wg-sign' style='font-size:2.6rem;font-weight:700;line-height:1.1'>"
+        "WildGuard</div>"
+        "<div style='font-size:1.05rem;opacity:0.92;margin-top:6px'>Cross-dataset label transfer "
+        "for wildlife-trade risk prioritisation</div>"
+        "<div aria-hidden='true' style='font-size:1.7rem;letter-spacing:0.55rem;margin-top:16px;"
+        f"filter:brightness(0) invert(92%) sepia(25%);opacity:0.6'>{animals}</div></div>",
+        unsafe_allow_html=True)
     st.markdown(
         "Customs and CITES authorities cannot inspect every wildlife shipment. WildGuard learns "
         "what historically *preceded enforcement action* from **5.5 million US import "
@@ -225,7 +256,7 @@ def page_overview():
     ]
     cols = st.columns(5)
     for col, (t, tech, desc) in zip(cols, steps):
-        col.markdown(f"**{t}**  \n<span style='color:{BLUE};font-size:0.8rem;font-weight:600'>"
+        col.markdown(f"**{t}**  \n<span style='color:{BLAZE};font-size:0.8rem;font-weight:600'>"
                      f"{tech.upper()}</span>  \n{desc}", unsafe_allow_html=True)
 
     st.subheader("What a flag means - and does not mean")
@@ -278,7 +309,7 @@ def flag_card(r):
     st.markdown(tier_badge(r["tier"]), unsafe_allow_html=True)
     qty = f"{r['quantity_std']:,.0f}" if r["quantity_std"] >= 10 else f"{r['quantity_std']:,.3g}"
     st.markdown(
-        f"#### {r['taxon_display']}\n"
+        f"#### {CLASS_ICON.get(r['class'], '🌿')} {r['taxon_display']}\n"
         f"**{qty} {r['unit_group']}** · {r['product_code']} · "
         f"source **{SOURCE.get(r['source'], r['source'])}** · purpose "
         f"**{PURPOSE.get(r['purpose'], r['purpose'])}**  \n"
@@ -316,7 +347,8 @@ def page_queue():
     f1, f2, f3, f4, f5 = st.columns([1, 1, 1.2, 1.2, 1.2])
     tier = f1.selectbox("Tier", ["priority", "review", "routine", "all"])
     years = f2.multiselect("Year", sorted(q["year"].unique()), placeholder="All years")
-    cls = f3.multiselect("Class", sorted(q["class"].dropna().unique()), placeholder="All classes")
+    cls = f3.multiselect("Class", sorted(q["class"].dropna().unique()), format_func=with_icon,
+                         placeholder="All classes")
     exp = f4.multiselect("Exporter", sorted(q["exporter"].unique()), format_func=cname,
                          placeholder="All exporters")
     imp = f5.multiselect("Importer", sorted(q["importer"].unique()), format_func=cname,
@@ -337,13 +369,14 @@ def page_queue():
         v = v[v["taxon_display"].str.contains(search, case=False, na=False)]
     v = v.sort_values("score_hybrid", ascending=False).reset_index(drop=True)
     st.markdown(f"**{len(v):,} records**")
-    cols = ["year", "taxon_display", "product_code", "quantity_std", "unit_group", "purpose",
+    cols = ["year", "class", "taxon_display", "product_code", "quantity_std", "unit_group", "purpose",
             "source", "exporter", "importer", "appendix", "risk_percentile"]
-    show = v[cols + (["tier"] if tier == "all" else [])].rename(
+    show = v[cols + (["tier"] if tier == "all" else [])].head(5000)
+    show = show.assign(**{"class": show["class"].astype(object).map(with_icon)}).rename(
         columns={"taxon_display": "taxon", "product_code": "term", "quantity_std": "quantity",
                  "unit_group": "unit", "risk_percentile": "risk pct."})
     event = st.dataframe(
-        show.head(5000), use_container_width=True, hide_index=True, height=340,
+        show, use_container_width=True, hide_index=True, height=340,
         on_select="rerun", selection_mode="single-row",
         column_config={"risk pct.": st.column_config.ProgressColumn(
             "risk pct.", min_value=0.0, max_value=1.0, format="%.4f"),
@@ -399,7 +432,7 @@ def page_check():
         a, b, c, d = st.columns(4)
         genus = a.text_input("Genus", p["genus"])
         species = b.text_input("Species", p["species"])
-        cls = c.selectbox("Class", CLASSES, index=CLASSES.index(p["cls"]))
+        cls = c.selectbox("Class", CLASSES, index=CLASSES.index(p["cls"]), format_func=with_icon)
         appendix = d.selectbox("CITES appendix", ["I", "II", "III", "not_listed"],
                                index=["I", "II", "III", "not_listed"].index(p["appendix"]))
         a, b, c, d = st.columns(4)
@@ -482,9 +515,9 @@ def page_evaluation():
     subset = a.radio("Shipments", ["All", "Commercial purpose only"], horizontal=True)
     v = t if subset == "All" else t[t["purpose"] == "T"]
     y = v["label"].to_numpy()
-    models = [("transfer:hybrid", "WildGuard (deployed transfer hybrid)", BLUE),
-              ("full:hybrid", "Hybrid + LEMIS-only value/port features", ORANGE),
-              ("baseline:listing_rule", "Rule: most endangered + wild first", AQUA),
+    models = [("transfer:hybrid", "WildGuard (deployed transfer hybrid)", GREEN),
+              ("full:hybrid", "Hybrid + LEMIS-only value/port features", BLAZE),
+              ("baseline:listing_rule", "Rule: most endangered + wild first", SLATE),
               ("baseline:random", "Random inspection", GREY)]
     k = max(1, int(round(budget * len(v))))
     res = {}
@@ -594,8 +627,10 @@ def page_patterns():
         labels = d[col].map(lambda k: PURPOSE.get(k, k))
     elif col == "source":
         labels = d[col].map(lambda k: SOURCE.get(k, k))
+    elif col == "class":
+        labels = d[col].map(with_icon)
     fig = go.Figure(go.Bar(
-        x=d["priority_share"] * 100, y=labels, orientation="h", marker_color=BLUE,
+        x=d["priority_share"] * 100, y=labels, orientation="h", marker_color=GREEN,
         customdata=d["records"], width=0.6,
         hovertemplate="%{y}: %{x:.2f}% flagged of %{customdata:,} records<extra></extra>"))
     fig.add_vline(x=1, line=dict(color="#898781", width=1))
@@ -618,7 +653,7 @@ def page_patterns():
         fig = go.Figure(go.Scatter(
             x=u["seizure_to_trade_ratio"], y=u["wildguard_priority_share"] * 100,
             mode="markers+text", text=u["group"].where(show, ""), textposition=pos,
-            marker=dict(size=10, color=BLUE, line=dict(color="#fcfcfb", width=2)),
+            marker=dict(size=10, color=GREEN, line=dict(color=KHAKI, width=2)),
             customdata=np.c_[u["group"], u["cites_records"]],
             hovertemplate="%{customdata[0]}<br>seizure/trade ratio %{x:.2f}<br>flagged %{y:.2f}%"
                           "<br>%{customdata[1]:,} CITES records<extra></extra>"))
