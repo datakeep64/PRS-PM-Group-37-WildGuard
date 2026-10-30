@@ -68,6 +68,14 @@ h1, h2, h3, h4, h5, [data-testid="stMetricValue"], .wg-sign {{
 [data-testid="stSidebar"] {{ background-color: {OLIVE}; }}
 [data-testid="stSidebar"] * {{ color: {CREAM} !important; }}
 [data-testid="stSidebar"] [data-testid="stCaptionContainer"] {{ opacity: 0.75; }}
+[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {{
+    background-color: rgba(239, 230, 204, 0.45) !important; }}
+[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child > div {{
+    background-color: {OLIVE} !important; }}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) > div:first-child {{
+    background-color: {BLAZE} !important; }}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) > div:first-child > div {{
+    background-color: {CREAM} !important; }}
 </style>""", unsafe_allow_html=True)
 
 TIER_STYLE = {"priority": ("#d03b3b", "Priority review"), "review": ("#fab219", "Review"),
