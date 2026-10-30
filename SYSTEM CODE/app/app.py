@@ -22,6 +22,33 @@ import streamlit as st
 CODE_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(CODE_DIR))
 
+# Streamlit Community Cloud pulls each push into the running app without restarting Python, and
+# only this file is re-read on every run: the wildguard modules already imported, and everything
+# held by st.cache_data / st.cache_resource, would keep serving the previous version (an
+# AttributeError on a new config constant, the previous dataset version on the Overview).
+# Whenever a code, model, output or sample file has changed since the last run, both are dropped.
+WATCHED = [CODE_DIR / d for d in ("wildguard", "models", "outputs")] + \
+          [CODE_DIR.parent / "DATA" / d for d in ("samples", "reference")]
+
+
+def fingerprint():
+    return max(p.stat().st_mtime_ns for d in WATCHED for p in d.rglob("*")
+               if p.is_file() and "__pycache__" not in p.parts)
+
+
+@st.cache_resource(show_spinner=False)
+def last_run():
+    return {}
+
+
+stamp = fingerprint()
+if last_run().get("stamp") != stamp:
+    for name in [m for m in sys.modules if m.split(".")[0] == "wildguard"]:
+        del sys.modules[name]
+    st.cache_data.clear()
+    st.cache_resource.clear()
+    last_run()["stamp"] = stamp
+
 from wildguard import config  # noqa: E402
 from wildguard.explain import COUNTRY, PURPOSE, SOURCE, explain_rows  # noqa: E402
 from wildguard.features import to_model_matrix  # noqa: E402
