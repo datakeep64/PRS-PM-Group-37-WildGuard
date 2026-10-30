@@ -260,8 +260,9 @@ def page_overview():
         "| Labels | `action` (Cleared/Refused), `disposition` (Cleared/Seized/Abandoned/"
         "Re-exported) | none |\n"
         "| Declared value | yes (USD) | no |")
-    st.markdown("**First five rows of each dataset, exactly as published**")
-    st.caption(f"LEMIS · {le['file']}")
+    st.markdown("**What the two original datasets look like**")
+    st.caption(f"LEMIS · {le['file']}, as published by EcoHealth Alliance (the 'cleaned' in the "
+               "name is theirs) · first five rows")
     st.dataframe(load_head("lemis"), hide_index=True, use_container_width=True,
                  column_config={c: st.column_config.Column(help=h) for c, h in lemis_fields().items()})
     st.caption(f"CITES · the first five animal records from {s0}–{s1}, in download order "
