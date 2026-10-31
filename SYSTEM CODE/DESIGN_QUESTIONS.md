@@ -675,6 +675,24 @@ transfer check: on no held-out region is it significantly worse than XGBoost alo
 
 ---
 
+## Part D. Building it
+
+The decisions above, turned into code changes on branch `rework`, in order. Each step is run and
+checked before the next.
+
+| Step | File | Change |
+|---|---|---|
+| D1 | `wildguard/config.py` | Year roles of B1: training 2000–2010, selection 2011, held back 2012, test 2013–2014, deployment 2000–2014 |
+| D2 | `wildguard/models.py` | The shared representation and encodings of `notebooks/model_selection.py` move here; the chosen ensemble (B5–B6): XGBoost (configuration 5, 357 rounds, no class weight) and a random forest (100 trees, depth 16, minimum leaf 5); scores combined by the average of percentile ranks within the scored population. The peer-deviation score stays for context; Isolation Forest, K-Means and the meta-learner leave the deployed path |
+| D3 | `wildguard/train.py` | Train on animals with a class (2000–2010); the one test (B10) on 2013–2014: the ensemble, its two members, logistic regression, the listing rule (appendix in force) and random ranking, on the four held-out sets of C1, per line item and per shipment (C2), with bootstrap intervals; C3 on the 2013 records with a recorded value; then refit the ensemble on 2000–2014 for deployment (B1) |
+| D4 | `wildguard/cites_features.py` | CITES records described with the deployment model's LEMIS norms (S2.1; norms from 2000–2014) |
+| D5 | `wildguard/score_cites.py` | Rule D records without source I or purpose L; percentile ranks within each year, averaged; consignment = export permit (a record without one stands alone), scored by its highest record (S6.1); tiers per year on consignments (priority top 1%, review next 4%); reasons from XGBoost's contributions with the peer-deviation signal (S5.2); a US-law warning for marine-mammal products with a non-US importer (S6.3); aggregates from exporter-reported records |
+| D6 | `wildguard/validate_cites.py` | The three checks of C7 with their pass criteria; the top 50 records exported for the two-person review |
+| D7 | `wildguard/domain_shift.py` | The shift measurements of C4: regional transfer of the ensemble, ageing, the domain classifier on raw fields against rule D's records, PSI per feature, a PCA projection (B9) |
+| D8 | `wildguard/analysis.py`, `explain.py` | Calibration and worked examples on the new ensemble; reason texts for `genus_listed`, the US-law warning and the peer context |
+| D9 | `app/app.py` | Only what the new outputs require, so the app runs; the interface itself changes after your instructions |
+| D10 | `run_pipeline.sh`, notebooks 04–05 | The step order; rerun notebooks 04 and 05 on the rebuilt data as the check of Part C |
+
 ## Decisions
 
 | Question | Decision | Date | Evidence |
