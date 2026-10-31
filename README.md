@@ -74,4 +74,11 @@ bash "SYSTEM CODE/run_pipeline.sh"
 * **CITES**: Full CITES Trade Database Download. Version 2026.1. Compiled by UNEP-WCMC,
   Cambridge, UK for the CITES Secretariat, Geneva, Switzerland. Available at: trade.cites.org.
 
-See [`DATA/README.md`](DATA/README.md) for the full citations and the schema alignment.
+See [`DATA/README.md`](DATA/README.md) for the full citations and the schema alignment, and
+[`DATA/USING_LEMIS_AND_CITES.md`](DATA/USING_LEMIS_AND_CITES.md) for how both datasets must be read
+according to their publishers' documentation, and
+[`DATA/ALIGNING_LEMIS_AND_CITES.md`](DATA/ALIGNING_LEMIS_AND_CITES.md) for how WildGuard aligns them.
+Any change to the pipeline or app should follow both.
+[`SYSTEM CODE/DESIGN_QUESTIONS.md`](SYSTEM%20CODE/DESIGN_QUESTIONS.md) shows how the system design
+changes after the alignment, stage by stage, how its models are chosen, and the questions still
+open before the pipeline is rebuilt.

@@ -3,16 +3,22 @@
 WildGuard uses two public, real-world wildlife-trade datasets. They complement each other:
 LEMIS has **labels without global scale**; CITES has **global scale without labels**.
 
-| | LEMIS (US Fish & Wildlife Service) | CITES Trade Database |
-|---|---|---|
-| What it records | Every wildlife import declared to USFWS | Trade in CITES-listed species reported by all Parties |
-| Version used | Zenodo record 3565869, **v1.1.0** (Dec 2019), 2000–2014 | **Full download v2026.1** (files dated June 2026) |
-| Size | 5,512,706 import line items (2,088,676 shipments), 974 MB | 29,170,051 records (1975–2026), 4.5 GB in 59 CSVs |
-| Used here | All imports 2000–2014, labelled | Animal records 2015–2024 for scoring (8.25M); 2013–2014 US-reported records for the alignment check |
-| Labels | `action` (Cleared/Refused) and `disposition` (Cleared/Seized/Abandoned/Re-exported) | none (the CITES Illegal Trade Database is access-restricted) |
-| Declared value | yes (`value`, USD) | no |
-| Licence / terms | CC-BY-4.0 | free for use with citation (see below) |
-| Downloaded | 27 Oct 2026 | 2026 (v2026.1) |
+**Before changing how either dataset is loaded or aligned, read
+[`USING_LEMIS_AND_CITES.md`](USING_LEMIS_AND_CITES.md)** (the publishers' rules for both datasets)
+**and [`ALIGNING_LEMIS_AND_CITES.md`](ALIGNING_LEMIS_AND_CITES.md)** (what WildGuard does with them, written
+from the EDA notebooks in `SYSTEM CODE/notebooks/`: what each dataset needs before use, the
+crosswalk, the checks every pipeline should pass, and the known deviations in the current code).
+
+|                 | LEMIS (US Fish & Wildlife Service)                                                      | CITES Trade Database                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| What it records | Every wildlife import declared to USFWS                                                 | Trade in CITES-listed species reported by all Parties                                                 |
+| Version used    | Zenodo record 3565869, **v1.1.0** (Dec 2019), 2000–2014                          | **Full download v2026.1** (files dated June 2026)                                               |
+| Size            | 5,512,706 import line items (2,088,676 shipments), 974 MB                               | 29,170,051 records (1975–2026), 4.5 GB in 59 CSVs                                                    |
+| Used here       | All imports 2000–2014, labelled                                                        | Animal records 2015–2024 for scoring (8.25M); 2013–2014 US-reported records for the alignment check |
+| Labels          | `action` (Cleared/Refused) and `disposition` (Cleared/Seized/Abandoned/Re-exported) | none (the CITES Illegal Trade Database is access-restricted)                                          |
+| Declared value  | yes (`value`, USD)                                                                    | no                                                                                                    |
+| Licence / terms | CC-BY-4.0                                                                               | free for use with citation (see below)                                                                |
+| Downloaded      | 27 Oct 2026                                                                             | 2026 (v2026.1)                                                                                        |
 
 **Label used:** a line item is an *enforcement case* (positive) if it was refused
 (`action = R`) or ended seized, abandoned or re-exported (`disposition ∈ {S, A, R}`).
@@ -55,14 +61,14 @@ update the report's data section to match.
 
 Both datasets are mapped onto one shared schema by `SYSTEM CODE/wildguard/schema_alignment.py`:
 
-| Field | LEMIS | CITES | Shared form |
-|---|---|---|---|
-| Product form | 3-letter code (`LIV`, `SKI`, `IVC` …, 94 codes) | English term (`live`, `skins` …, 101 terms) | 31 product groups |
-| Unit | code (`NO`, `KG`, `GM`, `ML` …) | word (`kg`, `g`, blank = number …) | count / kg / litre / m / m² / m³, quantities converted |
-| Source, purpose | CITES letter codes | CITES letter codes | identical, unmapped values → `unknown` |
-| Countries | ISO-3166 alpha-2 | ISO-3166 alpha-2 | identical, plus world region |
-| Taxonomy | genus, species, class | taxon, genus, family, order, class | genus, class (*Actinopterygii* ↔ *Actinopteri*) |
-| CITES appendix | not recorded | recorded | looked up for LEMIS taxa from CITES (species, then genus) |
+| Field           | LEMIS                                                  | CITES                                            | Shared form                                               |
+| --------------- | ------------------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------- |
+| Product form    | 3-letter code (`LIV`, `SKI`, `IVC` …, 94 codes) | English term (`live`, `skins` …, 101 terms) | 31 product groups                                         |
+| Unit            | code (`NO`, `KG`, `GM`, `ML` …)               | word (`kg`, `g`, blank = number …)          | count / kg / litre / m / m² / m³, quantities converted  |
+| Source, purpose | CITES letter codes                                     | CITES letter codes                               | identical, unmapped values → `unknown`                 |
+| Countries       | ISO-3166 alpha-2                                       | ISO-3166 alpha-2                                 | identical, plus world region                              |
+| Taxonomy        | genus, species, class                                  | taxon, genus, family, order, class               | genus, class (*Actinopterygii* ↔ *Actinopteri*)      |
+| CITES appendix  | not recorded                                           | recorded                                         | looked up for LEMIS taxa from CITES (species, then genus) |
 
 Coverage after mapping: 0.5% of LEMIS and 0.03% of CITES animal records fall into the
 residual `other` product group; 0.002% / 0.04% have an unmapped unit.
@@ -72,7 +78,7 @@ residual `other` product group; 0.002% / 0.04% have an unmapped unit.
 CITES Trade Database statistics:
 
 > CITES Trade Database 2026. Compiled by UNEP-WCMC for the CITES Secretariat. Available at:
-> trade.cites.org. Accessed 27 October 2026.
+> trade.cites.org. Last accessed 27 October 2026.
 
 Full database download:
 
