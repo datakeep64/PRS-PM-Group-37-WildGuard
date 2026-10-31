@@ -62,7 +62,7 @@ Learning Systems).
 | **3 · Supervised** | XGBoost on all line items, chosen in advance | XGBoost (B5) and a 100-tree random forest (B6), no class weights, trained on animals with a class | — |
 | **4 · Unsupervised** | Peer deviation, Isolation Forest, K-Means, refitted on all CITES records | Not part of the score: no detector improved it (B7). The peer-deviation score is shown as context | — |
 | **5 · Combine** | Meta-learner over all four signals, fitted on 2011–12, reused on CITES; reasons from the supervised model | The average of the two models' percentile ranks (B6) | S5.2 reasons |
-| **6 · Rank and review** (new) | Line items, within each year | Within each year; tiers by budget | S6.1 review unit; S6.2 flag-card context; S6.3 US-specific taxa |
+| **6 · Rank and review** (new) | Line items, within each year | Permits (consignments) scored by their highest record, ranked within each year into tiers by budget; flag card with context and a US-law warning | — |
 
 ### Stage 0 · Select records (new)
 
@@ -210,7 +210,9 @@ record:
 - Draft rule: the stack is used on CITES only if the reused weights are no worse than its
   supervised part alone on the target.
 
-**S5.2 Where the reasons come from.** *Choice.* RQ3.
+**S5.2 Where the reasons come from.** *Decided* (31 October 2026): reasons from XGBoost's exact
+contributions, with the peer-deviation signal beside them; the report says the reasons explain one
+of the two models. RQ3. The options, for the record:
 - Why open: the plain-language reasons come from XGBoost's TreeSHAP contributions (report §4.6),
   but the score is now the average of XGBoost's and the random forest's ranks (B6). Reasons from
   XGBoost alone explain half of the score.
@@ -230,7 +232,12 @@ Settled:
   4%.
 - Records already marked as confiscated (source `I`) or law enforcement (purpose `L`) are set aside.
 
-**S6.1 The review unit: line items or permits.** *To test.* RQ3. Open since notebook 05 (M9).
+**S6.1 The review unit: line items or permits.** *Decided: permits* (31 October 2026, notebook
+14). RQ3. A consignment's score is its highest record score (the maximum tied with the mean of the
+top two and beat noisy-or on LEMIS shipments). The queue ranks CITES export permits; a record
+without a permit stands alone. On LEMIS 2011, a 1% budget of shipments put a case behind 410 of
+411 slots, while ranking line items spent slots on repeat lines of the same shipments. The
+original question, for the record:
 - Why open: under rule D, 10.9% of top-1% slots repeat a permit already in the top 1%, and 85% of
   the multi-line permits in it are split by the cut.
 - LEMIS shipments are the equivalent of permits, and the pipeline already scores a shipment as the
@@ -241,14 +248,18 @@ Settled:
   at a 1% and 5% budget on the listed selection records (B1); choose the best, ties to the simplest
   (maximum). Then decide the unit from M9 and that result.
 
-**S6.2 What the flag card shows beyond the score.** *Choice.* RQ3.
+**S6.2 What the flag card shows beyond the score.** *Decided: context only* (31 October 2026):
+the consignment's other records, and the importer's report beside the exporter's where both
+exist, without scoring their disagreement. RQ3. The options, for the record:
 - Why open: signals only CITES has, such as the two countries' reports of a consignment
   disagreeing (M8) and one-sided reporting (M5, M6), cannot be learned from LEMIS (ALIGNING §2.3).
 - Options: show them as context (both reports side by side, the consignment's other lines); or
   add mirror disagreement as an unsupervised signal. M8 is partly mechanical and cannot be
   validated with labels, which argues for context only.
 
-**S6.3 US-specific taxa.** *Choice.* RQ6.
+**S6.3 US-specific taxa.** *Decided: a warning on the flag card* (31 October 2026): marine-mammal
+products stay ranked, with a note that the pattern may reflect US law when the importer is not
+the US; the report measures their share of flags. RQ6. The options, for the record:
 - Why open: marine-mammal products are refused at ten times the average rate in LEMIS, consistent
   with the US Marine Mammal Protection Act. They make up 12.7% of current priority flags, and the
   Greenland → Denmark route is flagged in 95% of its records (§6.7). Report §8 item 3 already
@@ -273,10 +284,12 @@ decided. Brackets mark wording that depends on a decision.
    seized, abandoned or re-exported vs cleared): XGBoost (boosting) and a random forest (bagging).
 5. **Unsupervised.** A peer-deviation score shows how unusual a record is for its peers. It is
    context for the reviewer, not part of the score: no unsupervised detector improved the ranking.
-6. **Combine.** The risk score is the average of the two models' percentile ranks, with reasons
-   [from S5.2].
-7. **Rank.** Records [or permits] are ranked within each year into review tiers by inspection
-   budget.
+6. **Combine.** The risk score is the average of the two models' percentile ranks. The reasons
+   come from XGBoost's contributions, shown with the peer-deviation signal.
+7. **Rank.** Consignments (CITES export permits), each scored by its highest record, are ranked
+   within each year into review tiers by inspection budget. The flag card shows the consignment's
+   records, both countries' reports where they exist, and a warning where a pattern may reflect
+   US law.
 
 The paragraph on what a flag means still holds. It gains one sentence: some signals exist only in
 CITES, such as the two countries' reports of a consignment disagreeing, and cannot be learned from
@@ -654,7 +667,8 @@ transfer check: on no held-out region is it significantly worse than XGBoost alo
 5. **Part B experiments:** B3 imbalance handling and B4 tuning → B5 supervised choice → B7
    detectors → B6 stack → B8 features.
 6. **Transfer and review:** C6, S6.1; then the choices S5.2, S6.2, S6.3. (S5.1 is moot: B6 chose
-   a rank average with no weights.)
+   a rank average with no weights.) *Done, 31 October 2026 (notebooks 13–14 and your choices).*
+   **Every design question is now decided.**
 7. **B10:** final fit, transfer check, the one test. Rerun notebooks 04 and 05 on the rebuilt
    features.
 8. **Report:** the flow diagram and §4 from Parts A and B and the decisions; §6 from Part C.
@@ -692,3 +706,7 @@ transfer check: on no held-out region is it significantly worse than XGBoost alo
 | B8 Features | The 21 shared features; consignment feature dropped | 31 October 2026 | notebook 12, F1–F5 |
 | C6 Transfer check | Ensemble passes; no further adaptation step | 31 October 2026 | notebook 13, R1–R2 |
 | B1 Deployed model | Refit on 2000–2014 after the one test | 31 October 2026 | notebook 13, R3–R4: performance falls with the gap |
+| S6.1 Review unit | Permits, scored by their highest record | 31 October 2026 | notebook 14, W1–W4 |
+| S5.2 Reasons | XGBoost's contributions, with the peer-deviation signal beside them | 31 October 2026 | Choice |
+| S6.2 Flag card | Context only: the consignment's records and both countries' reports | 31 October 2026 | Choice |
+| S6.3 US-specific taxa | Warning on the flag card | 31 October 2026 | Choice |

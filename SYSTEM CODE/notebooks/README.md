@@ -26,6 +26,7 @@ experiments will follow here as notebooks 06 onward.
 | [`11_detectors_and_stack.ipynb`](11_detectors_and_stack.ipynb) | Design questions B6–B7: five unsupervised detectors and forward selection of the stack (findings H1–H7: XGBoost plus a random forest; no detector improves the score) |
 | [`12_feature_selection.ipynb`](12_feature_selection.ipynb) | Design question B8: feature-group importance, leave-one-group-out on 2011, and each feature's shift between LEMIS and CITES (findings F1–F5: all groups but the consignment feature kept) |
 | [`13_transfer_and_age.ipynb`](13_transfer_and_age.ipynb) | Design questions C6, C4 and B1: the chosen ensemble on five held-out regions, and how performance falls with the gap between training and scored years (findings R1–R5) |
+| [`14_consignment_score.ipynb`](14_consignment_score.ipynb) | Design question S6.1: how to turn a consignment's line scores into one score, tested on LEMIS shipments (findings W1–W4: the maximum)|
 
 They read the raw downloads in `DATA/raw/` (see [`DATA/README.md`](../../DATA/README.md)). The first
 run copies them to Parquet in `DATA/processed/` (about 20 seconds); after that each notebook runs in
