@@ -506,13 +506,18 @@ four parts can be measured with labels, and the fourth is stated as a limitation
 |---|---|---|
 | Time | Within LEMIS: performance against the gap between training and test years (for example, train 2000–2004, test each later year) | New |
 | Trade mix | Listed and commercial held-out sets (C1); the regional holdout (§6.6 A) | Partly done |
-| Recording | US-overlap set (C5); domain classifier on US-reported records (§6.6 B, AUC 0.771) | New |
+| Recording | Domain classifier on US-reported records (§6.6 B, AUC 0.771). The US-overlap labelled set (C5) proved unusable: most enforcement cases never reach the CITES record | Partly measurable |
 | Jurisdiction | Not measurable: no labels outside the US. Indirect only (C7); stated as a limitation | Limitation |
 
 A PCA projection of LEMIS and CITES (B9) illustrates the shift.
 
-**C5 A labelled set in CITES's own format: the US overlap.** *To test.* RQ5. Data only, so it can
-run first; if usable, it is a test set for S2.1, S5.1 and C6.
+**C5 A labelled set in CITES's own format: the US overlap.** *Decided: not usable* (31 October
+2026, notebook 07). RQ5. On the primary key, 72.0% of cleared line items have a matching
+US-reported CITES record but only 39.1% of enforcement cases (seized 31%, abandoned 22%): the CITES
+report records trade that took place, and most stopped shipments never entered. The gap (32.9
+points) fails the rule, so S2.1, S5.1 and C6 are judged without this set. The finding itself
+belongs in the report: a flag means a CITES record resembles trade that was stopped in the US, not
+that the record was stopped (§1.4, §8). The original question, for the record:
 - Why open: the US compiles its CITES report from the same declarations LEMIS holds (X11). 76% of
   2013–2014 LEMIS line items of listed species have a US-reported CITES record of the same year,
   species and exporter (M4). Attaching the LEMIS outcomes to those records would give the only
@@ -581,7 +586,7 @@ run first; if usable, it is a test set for S2.1, S5.1 and C6.
 1. **Data rebuild (pipeline stages 0–2):** implement the settled items, decide S1.1, run the
    ALIGNING §2.4 checks. Part B's candidates are compared on this data. *Done on branch `rework`,
    31 October 2026: `prepare_data.py`, `check_alignment.py` (all checks pass), notebook 06.*
-2. **C5:** build and test the US-overlap set.
+2. **C5:** build and test the US-overlap set. *Done, 31 October 2026: not usable (notebook 07).*
 3. **Choices and plans:** all decided on 31 October 2026 (B1–B4, B9, C1–C4, C7; see Decisions).
 4. **S2.1** (whose peer norms), then **S2.2** (consignment features).
 5. **Part B experiments:** B3 imbalance handling and B4 tuning → B5 supervised choice → B7
@@ -613,3 +618,4 @@ run first; if usable, it is a test set for S2.1, S5.1 and C6.
 | S1.1 Product groups | One leather group; live rock with raw coral; plant codes to `other`; CITES fibres to `hair` | 31 October 2026 | notebook 06, G1–G5 |
 | Appendix genus rule | Genus decides only when no species is named; otherwise `genus_listed` | 31 October 2026 | notebook 06, G6 |
 | Leech class | LEMIS `Clitellata` leech genera map to CITES `Hirudinoidea` | 31 October 2026 | ALIGNING §2.4 check 3 |
+| C5 US-overlap set | Not usable as labelled CITES data | 31 October 2026 | notebook 07, U1–U4: cases covered 39.1% vs cleared 72.0% |

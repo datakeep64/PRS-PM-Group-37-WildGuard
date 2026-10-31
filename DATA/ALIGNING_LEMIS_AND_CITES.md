@@ -295,6 +295,14 @@ from LEMIS enforcement outcomes and can enter only as context or unsupervised ev
   (M5, M6): Taiwan, Russia and Canada, for example, report almost no imports in these records. So
   "not confirmed by the importer" is not a risk signal on its own.
 
+**Most enforcement cases never reach CITES** ([notebook 07](../SYSTEM%20CODE/notebooks/07_us_overlap.ipynb)).
+Matched on year, species, exporter, product group, purpose and source, 72.0% of cleared 2013–14
+LEMIS line items of listed species have a CITES record the US reported, but only 39.1% of
+enforcement cases (seized 31%, abandoned 22%). CITES records trade that took place, and a stopped
+shipment did not enter. So LEMIS outcomes cannot be attached to CITES records to form a labelled
+set, and a flag on a CITES record means the record resembles trade that was stopped in the US, not
+that the record itself was stopped.
+
 Where the two datasets describe the same trade, they agree (X11). In 2013–14, LEMIS line items of
 CITES-listed species (243,172) and CITES records reported by the US as importer (246,206) have
 almost the same purpose mix (personal 3.29% vs 3.27%) and a similar source mix. The remaining
