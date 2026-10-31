@@ -3,6 +3,12 @@
 WildGuard uses two public, real-world wildlife-trade datasets. They complement each other:
 LEMIS has **labels without global scale**; CITES has **global scale without labels**.
 
+To view these datasets, access the following links :
+https://trade.cites.org/
+https://github.com/eveskew/lemis
+
+
+
 **Before changing how either dataset is loaded or aligned, read
 [`USING_LEMIS_AND_CITES.md`](USING_LEMIS_AND_CITES.md)** (the publishers' rules for both datasets)
 **and [`ALIGNING_LEMIS_AND_CITES.md`](ALIGNING_LEMIS_AND_CITES.md)** (what WildGuard does with them, written
