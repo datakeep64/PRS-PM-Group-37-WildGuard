@@ -6,8 +6,10 @@
    aside as "excluded": telling an analyst to review what has already been seized adds nothing.
 3. The deployed ensemble (XGBoost and a random forest, trained on LEMIS 2000-2014) scores every
    other record; its score is the average of the two models' percentile ranks within each year.
-4. Records are grouped into consignments: those sharing an export permit (a record without a
-   permit stands alone). A consignment's score is its highest record score (S6.1, notebook 14).
+4. Records are grouped into consignments: those sharing an export permit, exporter, importer and
+   year (a record without a permit stands alone). The countries are part of the key because the
+   anonymised permit IDs collide across unrelated trades. A consignment's score is its highest
+   record score (S6.1, notebook 14).
 5. Consignments are ranked within each year into review tiers by inspection budget:
        priority = top 1 %, review = next 4 %, routine = the rest
    Without CITES labels the score cannot be calibrated as a probability, so it is a ranking of
@@ -54,12 +56,21 @@ def known_enforcement(df):
     return ((df["source"] == "I") | (df["purpose"] == "L")).to_numpy()
 
 
+def consignment_key(df, cons=None):
+    """One consignment per year, exporter, importer and export permit. An export permit is issued
+    by one country for one importer, and the anonymised permit IDs collide across unrelated
+    trades (a placeholder permit number gets one ID), so the ID alone would merge them."""
+    cons = df["consignment"] if cons is None else cons
+    return (df["year"].astype(str) + "|" + df["exporter"].astype(str) + "|"
+            + df["importer"].astype(str) + "|" + cons.astype(str))
+
+
 def consignment_tiers(df):
     """Consignment = export permit, else the record itself; score = highest record score;
-    tiers by budget within each year. Returns (consignment id, consignment score, tier)."""
+    tiers by budget within each year. Returns (permit ID, consignment score, tier)."""
     cons = df["export_permit"].astype("object").where(df["export_permit"].notna(),
                                                       "record " + df["shipment_id"].astype(str))
-    key = df["year"].astype(str) + "|" + cons.astype(str)
+    key = consignment_key(df, cons)
     c_score = df.groupby(key)["score"].transform("max").to_numpy()
     first = ~key.duplicated().to_numpy()
     c = pd.DataFrame({"year": df["year"].to_numpy()[first], "key": key.to_numpy()[first],
@@ -77,8 +88,7 @@ def write_record_scale(R):
     of its own, among the year's ranked permits: the consignment-score quantiles and tier
     cut-offs, and each member's score quantiles (a new record's percentile ranks within the year,
     as `Ensemble.score` computes them for the scored records)."""
-    key = R["year"].astype(str) + "|" + R["consignment"].astype(str)
-    first = ~key.duplicated().to_numpy()
+    first = ~consignment_key(R).duplicated().to_numpy()
     out = {}
     for y in sorted(R["year"].unique()):
         rec = (R["year"] == y).to_numpy()
@@ -172,11 +182,12 @@ def main():
         "records_rule_d": int(len(F)), "records_ranked": int(len(R)),
         "excluded_known_enforcement": int((~eligible).sum()),
         "years": [int(R["year"].min()), int(R["year"].max())],
-        "consignments": int(pd.Series(R["year"].astype(str) + "|" + R["consignment"].astype(str)).nunique()),
+        "consignments": int(consignment_key(R).nunique()),
         "priority_records": int((R["tier"] == "priority").sum()),
         "review_records": int((R["tier"] == "review").sum()),
         "priority_consignments_per_year": {
-            str(k): int(v) for k, v in R[R["tier"] == "priority"].groupby("year")["consignment"].nunique().items()},
+            str(k): int(v) for k, v in consignment_key(R[R["tier"] == "priority"])
+            .groupby(R.loc[R["tier"] == "priority", "year"]).nunique().items()},
         # S6.3: how much of the priority tier the US-law warning covers
         "priority_share_marine_mammal_non_us_importer": float(mm.mean()) if len(pri_r) else 0.0,
         "ranked_share_marine_mammal_non_us_importer": float(

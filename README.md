@@ -27,11 +27,12 @@ and 0.020 for random inspection, using only fields that CITES also records. XGBo
 0.006 higher than the chosen two-model ensemble on this test; the ensemble had been chosen
 beforehand and was kept.
 
-On CITES, 5,465,862 records are ranked in 3,239,575 export permits; 32,390 permits fall in the
-priority tier. CITES has no outcomes, so three checks were fixed in advance: the ranking agrees
-with UNODC seizure statistics (Spearman ρ = 0.54, pass), a model that never sees the source field
-ranks confiscated specimens above other records (ROC-AUC 0.888, pass), and in a review of the 50
-top-ranked taxa 30% showed no recognised risk pattern (fail; the pass mark was 20%).
+On CITES, 5,465,862 records are ranked in 3,274,789 export permits; 32,741 permits fall in the
+priority tier. CITES has no outcomes, so three checks were fixed in advance. One passes: a model
+that never sees the source field ranks confiscated specimens above other records (ROC-AUC 0.888).
+Two fail: the ranking does not clearly follow UNODC seizure statistics (Spearman ρ = 0.13 across
+14 animal groups, against a pass mark of p < 0.05), and in a review of the 50 top-ranked taxa 30%
+showed no recognised risk pattern (the pass mark was 20%).
 
 A flag means *"this permit's records resemble trade that US officers stopped"*. It is a prompt for
 limited human attention, not evidence that a law was broken.

@@ -177,13 +177,15 @@ def load_queue():
 
 @st.cache_resource
 def load_permits():
-    """The review queue as permits: one row per export permit within a year (a record without a
-    permit stands alone), described by its highest-scoring record, which sets the permit's
-    score. Returns (permits, each queue record's permit number)."""
+    """The review queue as permits: one row per export permit, exporter, importer and year, as
+    score_cites groups them (a record without a permit stands alone), described by its
+    highest-scoring record, which sets the permit's score. Returns (permits, each queue record's
+    permit number)."""
     q, scale = load_queue(), load_json(config.OUTPUTS_DIR / "cites_record_scale.json")
     if q is None or scale is None:
         return None, None
-    gid = q.groupby(["year", "consignment"], observed=True, sort=False).ngroup().to_numpy()
+    gid = q.groupby(["year", "exporter", "importer", "consignment"], observed=True,
+                    sort=False).ngroup().to_numpy()
     top_row = pd.Series(q["score"].to_numpy()).groupby(gid).idxmax().to_numpy()
     P = q.iloc[top_row].reset_index(drop=True)
     P["gid"], P["row"], P["records"] = np.arange(len(P)), top_row, np.bincount(gid)
@@ -949,12 +951,13 @@ def page_patterns():
     sup = load_json(config.OUTPUTS_DIR / "lemis_supplementary.json")
     uc, cp, tr = val["unodc_consistency"], val["confiscated_proxy"], val["top_records"]
     none_c = top50[top50["category"] == "c"] if top50 is not None else None
+    rho, rho_lr = uc["spearman_rho_wildguard"], uc["spearman_rho_listing_rule"]
     checks = [
         (uc["pass"], "1 · Seizure data (UNODC)",
-         f"Animal groups seized more often than their legal trade suggests are flagged more "
-         f"often: Spearman ρ = {uc['spearman_rho_wildguard']:.2f} (one-sided p = "
-         f"{uc['permutation_p_one_sided']}), above the listing rule's "
-         f"{uc['spearman_rho_listing_rule']:.2f}.",
+         f"Animal groups seized more often than their legal trade suggests are "
+         f"{'flagged more often' if uc['pass'] else 'not clearly flagged more often'}: Spearman "
+         f"ρ = {rho:.2f} (one-sided p = {uc['permutation_p_one_sided']}), "
+         f"{'above' if rho > rho_lr else 'below'} the listing rule's {rho_lr:.2f}.",
          "Pass: ρ positive with p below 0.05, and above the listing rule's."),
         (cp["pass"], "2 · Confiscated specimens",
          f"Retrained without any source information, the model still ranks confiscated "
@@ -973,6 +976,17 @@ def page_patterns():
             st.markdown(f"{check_badge(passed)} &nbsp; **{title}**", unsafe_allow_html=True)
             st.markdown(result)
             st.caption(rule)
+    if not uc["pass"] and u is not None and uc["unstable_groups"]:
+        thin = u[u["group"].isin(uc["unstable_groups"])]
+        st.markdown(
+            "**Why check 1 fails:** with 14 groups, one group's rank moves ρ a lot. "
+            + " ".join(f"{r.group}, the group most over-represented in seizures, has only "
+                       f"{r.cites_records:,} ranked records, {r.wildguard_priority_share:.1%} of "
+                       "them in priority permits."
+                       if r.seizure_to_trade_ratio == u["seizure_to_trade_ratio"].max() else
+                       f"{r.group} has only {r.cites_records:,} ranked records."
+                       for r in thin.itertuples())
+            + " The check was fixed before the result was seen, so it is reported as a fail.")
     if none_c is not None and len(none_c):
         same = none_c.groupby(["purpose", "source", "appendix"]).size()
         into = ", ".join(f"{COUNTRY.get(c, c)} {n}" for c, n in

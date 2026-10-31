@@ -273,7 +273,9 @@ check, with the rules unchanged (31 October 2026); the figures below are the rer
   A line-item queue spends 13.3% of its top-1% slots on a second line of a permit already in it,
   including the other country's report of the same consignment, and splits 73% of the multi-line
   permits it reaches. The queue therefore ranks export permits, each scored by its highest record,
-  and the flag card shows the permit's records, with both countries' reports where they differ. In
+  and the flag card shows the permit's records, with both countries' reports where they differ.
+  A permit is keyed on its ID, exporter, importer and year: the anonymised IDs also occur on
+  unrelated trades (a placeholder permit number gets one ID), so the ID alone would merge them. In
   the rerun the two reports disagree on quantity only slightly more often among high-risk records
   (M8), so the comparison is context for the reviewer, not evidence of risk. This changes the review
   tool, not the data.

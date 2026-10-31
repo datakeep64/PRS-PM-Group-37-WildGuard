@@ -6,21 +6,21 @@
     2015,
     2024
   ],
-  "consignments": 3239575,
-  "priority_records": 46734,
-  "review_records": 287730,
+  "consignments": 3274789,
+  "priority_records": 41057,
+  "review_records": 265714,
   "priority_consignments_per_year": {
-    "2015": 3865,
-    "2016": 3563,
-    "2017": 3426,
-    "2018": 3615,
-    "2019": 3501,
-    "2020": 2476,
-    "2021": 2864,
-    "2022": 3041,
-    "2023": 3264,
-    "2024": 2775
+    "2015": 3917,
+    "2016": 3606,
+    "2017": 3463,
+    "2018": 3663,
+    "2019": 3538,
+    "2020": 2501,
+    "2021": 2894,
+    "2022": 3072,
+    "2023": 3288,
+    "2024": 2799
   },
-  "priority_share_marine_mammal_non_us_importer": 0.0758548380194291,
+  "priority_share_marine_mammal_non_us_importer": 0.08573446671700319,
   "ranked_share_marine_mammal_non_us_importer": 0.003931310377027448
 }

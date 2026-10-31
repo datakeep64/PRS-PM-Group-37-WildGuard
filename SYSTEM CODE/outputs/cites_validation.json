@@ -1,13 +1,22 @@
 {
   "unodc_consistency": {
     "n_groups": 14,
-    "spearman_rho_wildguard": 0.543,
-    "permutation_p_one_sided": 0.0245,
+    "spearman_rho_wildguard": 0.134,
+    "permutation_p_one_sided": 0.3244,
     "spearman_rho_listing_rule": 0.429,
     "unstable_groups": [
       "Pangolins"
     ],
-    "pass": true
+    "pass": false
+  },
+  "top_records": {
+    "records": 50,
+    "file": "cites_top50_review.csv",
+    "classified_by": "the stated rule in validate_cites.classify, not by human reviewers",
+    "share_a_recognised_pattern": 0.62,
+    "share_b_us_law_abroad": 0.08,
+    "share_c_no_apparent_reason": 0.3,
+    "pass": false
   },
   "confiscated_proxy": {
     "features_removed": [
@@ -24,16 +33,7 @@
     "pass": true
   },
   "marine_mammal_non_us_importer": {
-    "share_of_priority_records": 0.0758548380194291,
+    "share_of_priority_records": 0.08573446671700319,
     "share_of_ranked_records": 0.003931310377027448
-  },
-  "top_records": {
-    "records": 50,
-    "file": "cites_top50_review.csv",
-    "classified_by": "the stated rule in validate_cites.classify, not by human reviewers",
-    "share_a_recognised_pattern": 0.62,
-    "share_b_us_law_abroad": 0.08,
-    "share_c_no_apparent_reason": 0.3,
-    "pass": false
   }
 }

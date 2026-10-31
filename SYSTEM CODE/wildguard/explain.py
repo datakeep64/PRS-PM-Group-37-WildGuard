@@ -71,6 +71,11 @@ def reason_for(feature, r):
         return f"source: {SOURCE.get(r['source'], r['source'])}{tail}"
     if feature in ("route_share", "route_n_log"):
         share = r.get("route_share", 0)
+        if share == 0:
+            return f"rare route: no recorded {g} trade from {country(r['exporter'])}"
+        if share < 0.0001:
+            return (f"rare route: {country(r['exporter'])} accounts for under 0.01% of "
+                    f"recorded {g} trade")
         if share < 0.01:
             return (f"rare route: {country(r['exporter'])} accounts for {share:.2%} of "
                     f"recorded {g} trade")

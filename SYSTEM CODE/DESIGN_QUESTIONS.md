@@ -236,8 +236,11 @@ Settled:
 14). RQ3. A consignment's score is its highest record score (the maximum tied with the mean of the
 top two and beat noisy-or on LEMIS shipments). The queue ranks CITES export permits; a record
 without a permit stands alone. On LEMIS 2011, a 1% budget of shipments put a case behind 410 of
-411 slots, while ranking line items spent slots on repeat lines of the same shipments. The
-original question, for the record:
+411 slots, while ranking line items spent slots on repeat lines of the same shipments.
+*Corrected 31 October 2026:* a permit is keyed on its ID, exporter, importer and year. The
+anonymised permit IDs also occur on unrelated trades (one ID covered St Kitts → US conch and
+Congo → Singapore sharks in the same year), so the ID alone had merged them; 16.5% of priority
+records sat in such mixed groups (Decisions). The original question, for the record:
 - Why open: under rule D, 10.9% of top-1% slots repeat a permit already in the top 1%, and 85% of
   the multi-line permits in it are split by the cut.
 - LEMIS shipments are the equivalent of permits, and the pipeline already scores a shipment as the
@@ -744,4 +747,6 @@ checked before the next.
 | B10 The one test | Ensemble kept as decided: on 2013–2014 it scored PR-AUC 0.540 on listed line items, 0.006 below XGBoost alone (interval −0.009 to −0.003), with equal recall at the review budgets. Not revisited, so the test stays untouched; the report states it | 31 October 2026 | `outputs/lemis_evaluation.json` |
 | Interface (D9) | Five pages, each answering one question with the technical detail in expanders; the review queue lists permits beside a flag card; risk shown as tier and rank in the year, not as a probability; one "Check a record" form, with optional US declaration fields that switch to the full model | 31 October 2026 | User's choices |
 | Notebook 05 rerun (Part C) | Rule D holds: the lowest review effort lost in all four cases (three of four in the first run). The link between the two reports disagreeing and the model's risk largely disappears (M8: 11.9% vs 9.9%, first run 33.3% vs 9.8%) | 31 October 2026 | notebook 05, M7–M8 |
+| S6.1 permit key (correction) | A permit = its ID, exporter, importer and year, not the ID alone: anonymised IDs collide across unrelated trades. Decided before the checks were rerun. Permits 3,274,789 (was 3,239,575); priority records 41,057 (was 46,734) | 31 October 2026 | `score_cites.consignment_key`; user's choice |
+| C7 checks after the correction | Check 1 (UNODC) now **fails**: ρ 0.134, one-sided p 0.32, below the listing rule's 0.429 (it passed at ρ 0.543 with the merged permits). Pangolins, the most over-seized group with only 133 records (flagged unstable), had 3 priority records, all through ID collisions, and now has none. Check 2 unchanged (pass, ROC-AUC 0.888); check 3 unchanged (fail, 62% / 8% / 30%). Reported as they are, not re-ruled | 31 October 2026 | `outputs/cites_validation.json` |
 | Notebook 04 rerun (Part C) | B kept. Evaluated on 2011 with the B5 settings: at a 1% budget the four populations are indistinguishable, so the rule as written keeps B; with PR-AUC the same rule picks C, listed species only (+0.007 on listed line items, interval +0.002 to +0.012; +0.017 on listed commercial). The rerun came after the one test, which used B, so the design is not changed; the report states the result and lists training on listed species as future work | 31 October 2026 | notebook 04, P1–P2; user's choice |
