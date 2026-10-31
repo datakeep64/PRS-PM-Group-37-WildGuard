@@ -1,28 +1,30 @@
-"""Steps 5-7 on CITES - cross-dataset label transfer in deployment.
+"""Steps 5-7 on CITES - cross-dataset label transfer in deployment (DESIGN_QUESTIONS.md Part A).
 
-1. CITES 2015-2024 animal records are described with the shared feature set, using peer
-   norms learned from CITES itself (cites_features.py).
-2. The supervised part of the deployed stack (trained on LEMIS outcomes) scores each record.
-3. The three unsupervised detectors are re-fitted on CITES - they need no labels - so
-   "anomalous" means anomalous relative to global CITES trade.
-4. The LEMIS-trained hybrid combiner merges the four signals into one risk score.
-5. Records that are already enforcement material - source "I" (confiscated/seized specimen) or
-   purpose "L" (law enforcement / judicial / forensic) - are set aside as tier "excluded": an
-   analyst gains nothing from being told to review what has already been seized.
-6. The remaining records are ranked within each year into review tiers by inspection budget:
-       priority = top 1 %, review = next 4 %, routine = remaining 95 %
-   Budget-based tiers are used on CITES because, without CITES labels, the score cannot be
-   calibrated as a probability there; it is a *ranking* of where to look first.
-7. Every priority record (and a random sample of the rest) gets plain-language reasons.
+1. The CITES records rule D selects, 2015-2024, described with the LEMIS peer norms of the
+   deployed model (cites_features.py; S2.1).
+2. Records already marked as confiscated (source I) or law enforcement (purpose L) are set
+   aside as "excluded": telling an analyst to review what has already been seized adds nothing.
+3. The deployed ensemble (XGBoost and a random forest, trained on LEMIS 2000-2014) scores every
+   other record; its score is the average of the two models' percentile ranks within each year.
+4. Records are grouped into consignments: those sharing an export permit (a record without a
+   permit stands alone). A consignment's score is its highest record score (S6.1, notebook 14).
+5. Consignments are ranked within each year into review tiers by inspection budget:
+       priority = top 1 %, review = next 4 %, routine = the rest
+   Without CITES labels the score cannot be calibrated as a probability, so it is a ranking of
+   where to look first. Every record carries its consignment's tier.
+6. Priority records (and a random sample of the rest) get plain-language reasons from the
+   XGBoost member, the peer-deviation context, and the US-law warning where it applies (S5.2,
+   S6.3).
+7. Counts and shares describe exporter-reported records only (ALIGNING section 1.2).
 
 Outputs
-    DATA/processed/cites_scored.parquet        every scored record (large, not in git)
+    DATA/processed/cites_scored.parquet        every rule D record, scored or excluded (not in git)
     DATA/samples/cites_review_queue.parquet    flagged + sample records with reasons (app)
     SYSTEM CODE/outputs/cites_aggregates/*.csv risk concentration tables (app + report)
+    SYSTEM CODE/models/cites_ensemble.joblib   the deployed ensemble with CITES percentile scales
 
 Run:  python -m wildguard.score_cites
 """
-import copy
 import json
 import time
 
@@ -31,119 +33,132 @@ import numpy as np
 import pandas as pd
 
 from . import cites_features, config
-from .explain import explain_rows
-from .features import to_model_matrix
+from .explain import explain_rows, marine_mammal, peer_context, us_law_warning
+from .features import SHARED_FEATURES
+from .models import PeerDeviationScorer, percentile_rank
 
-PRIORITY, REVIEW = 0.01, 0.05          # cumulative inspection budgets per year
+PRIORITY, REVIEW = 0.01, 0.05          # cumulative inspection budgets per year, in consignments
 AGG_DIR = config.OUTPUTS_DIR / "cites_aggregates"
 QUEUE_PATH = config.SAMPLES_DIR / "cites_review_queue.parquet"
-
-
-def deployed_stack_name():
-    p = config.MODELS_DIR / "deployment.json"
-    return json.loads(p.read_text())["stack"] if p.exists() else "transfer"
-
-
-def load_cites_stack():
-    """The deployed stack with its unsupervised detectors re-fitted on CITES."""
-    path = config.MODELS_DIR / "cites_stack.joblib"
-    if path.exists():
-        return joblib.load(path)
-    raise FileNotFoundError("run python -m wildguard.score_cites first")
+KEEP = ["shipment_id", "year", "class", "order_name", "family", "genus", "taxon", "taxon_display",
+        "product_code", "product_group", "unit_group", "quantity_std", "purpose", "source",
+        "origin", "exporter", "importer", "appendix", "reporter_type", "export_permit",
+        "origin_region", "exporter_region", "peer_qty_median", "qty_z", "route_share",
+        "purpose_share_in_genus", "source_share_in_genus", "combo_rarity"]
 
 
 def known_enforcement(df):
-    """Records that are already enforcement material and so are not ranked for review."""
     return ((df["source"] == "I") | (df["purpose"] == "L")).to_numpy()
 
 
-def tiers_by_year(df, score_col, eligible):
-    pct = df[score_col].where(eligible).groupby(df["year"]).rank(pct=True, method="first")
-    tier = np.where(~eligible, "excluded",
-                    np.where(pct > 1 - PRIORITY, "priority",
-                             np.where(pct > 1 - REVIEW, "review", "routine")))
-    return pct.to_numpy(), tier
+def consignment_tiers(df):
+    """Consignment = export permit, else the record itself; score = highest record score;
+    tiers by budget within each year. Returns (consignment id, consignment score, tier)."""
+    cons = df["export_permit"].astype("object").where(df["export_permit"].notna(),
+                                                      "record " + df["shipment_id"].astype(str))
+    key = df["year"].astype(str) + "|" + cons.astype(str)
+    c_score = df.groupby(key)["score"].transform("max").to_numpy()
+    first = ~key.duplicated().to_numpy()
+    c = pd.DataFrame({"year": df["year"].to_numpy()[first], "key": key.to_numpy()[first],
+                      "score": c_score[first]})
+    c["rank"] = c.groupby("year")["score"].rank(ascending=False, method="first")
+    c["n"] = c.groupby("year")["score"].transform("size")
+    c["tier"] = np.where(c["rank"] <= PRIORITY * c["n"], "priority",
+                         np.where(c["rank"] <= REVIEW * c["n"], "review", "routine"))
+    tier = pd.Series(c["tier"].to_numpy(), index=c["key"]).reindex(key).to_numpy()
+    return cons.to_numpy(), c_score, tier
 
 
 def main():
     t0 = time.time()
     cites_features.build()
-    name = deployed_stack_name()
-    stack = copy.copy(joblib.load(config.MODELS_DIR / f"{name}_stack.joblib"))
-    F = cites_features.load_features()
-    print(f"loaded {len(F):,} CITES records, deployed stack = {name} ({time.time() - t0:.0f}s)")
-
-    stack.fit_unsupervised(F)
-    stack.name = f"{name}_cites"
-    joblib.dump(stack, config.MODELS_DIR / "cites_stack.joblib", compress=3)
-    print(f"unsupervised detectors re-fitted on CITES, k={stack.kmeans.k} "
-          f"({time.time() - t0:.0f}s)")
-
-    parts = []
-    for lo in range(0, len(F), 1_000_000):
-        parts.append(pd.DataFrame(stack.score(F.iloc[lo:lo + 1_000_000])))
-    S = pd.concat(parts, ignore_index=True)
-    for c in S.columns:
-        F[f"score_{c}"] = S[c].astype("float32").to_numpy()
+    ensemble = joblib.load(config.MODELS_DIR / "deployed_ensemble.joblib")
+    cols = list(dict.fromkeys(KEEP + SHARED_FEATURES + ["rule_d"]))
+    F = cites_features.load_features(columns=cols)
+    F = F[F["rule_d"]].drop(columns="rule_d").reset_index(drop=True)
     eligible = ~known_enforcement(F)
-    F["risk_percentile"], F["tier"] = tiers_by_year(F, "score_hybrid", eligible)
-    F["cluster"] = stack.kmeans.assign(F).astype("int16")
+    print(f"{len(F):,} rule D records, {eligible.sum():,} ranked ({time.time() - t0:.0f}s)")
+
+    # ------------------------------------------------------------------ scores
+    R = F[eligible].reset_index(drop=True)
+    parts = []
+    for lo in range(0, len(R), 1_000_000):
+        parts.append(pd.DataFrame(ensemble.member_scores(R.iloc[lo:lo + 1_000_000])))
+    M = pd.concat(parts, ignore_index=True)
+    R["score_xgboost"] = M["xgboost"].astype("float32").to_numpy()
+    R["score_random_forest"] = M["random_forest"].astype("float32").to_numpy()
+    R["score"] = ensemble.score(R, groups=R["year"].to_numpy(),
+                                members={"xgboost": M["xgboost"].to_numpy(),
+                                         "random_forest": M["random_forest"].to_numpy()})
+    R["consignment"], R["consignment_score"], R["tier"] = consignment_tiers(R)
+    R["peer_deviation"] = PeerDeviationScorer().score(R).astype("float32")
+    R["us_law_warning"] = us_law_warning(R) != ""
     print(f"scored ({time.time() - t0:.0f}s)")
 
-    keep = ["shipment_id", "year", "class", "order_name", "family", "genus", "taxon",
-            "taxon_display", "product_code", "product_group", "unit_group", "quantity_std",
-            "purpose", "source", "origin", "exporter", "importer", "appendix", "reporter_type",
-            "origin_region", "exporter_region", "peer_qty_median", "qty_z", "route_share",
-            "purpose_share_in_genus", "source_share_in_genus", "cluster", "risk_percentile",
-            "tier"] + [c for c in F.columns if c.startswith("score_")]
-    F[keep].to_parquet(config.PROCESSED_DIR / "cites_scored.parquet", index=False)
+    X = F[~eligible].copy()
+    X["tier"] = "excluded"
+    scored = pd.concat([R, X], ignore_index=True)
+    out_cols = KEEP + ["score", "score_xgboost", "score_random_forest", "consignment",
+                       "consignment_score", "peer_deviation", "us_law_warning", "tier"]
+    scored[[c for c in out_cols if c in scored]].to_parquet(
+        config.PROCESSED_DIR / "cites_scored.parquet", index=False)
+
+    # percentile scales for scoring a single record in the app
+    ensemble.set_reference(R.sample(min(len(R), 400_000), random_state=config.RANDOM_STATE))
+    joblib.dump(ensemble, config.MODELS_DIR / "cites_ensemble.joblib", compress=3)
 
     # ----------------------------------------------------------------- review queue
     rng = np.random.default_rng(config.RANDOM_STATE)
-    pri = np.flatnonzero(F["tier"].to_numpy() == "priority")
-    rest = np.flatnonzero(np.isin(F["tier"].to_numpy(), ["review", "routine"]))
-    pick = np.sort(np.r_[pri, rng.choice(rest, 40_000, replace=False)])
-    Q = F.iloc[pick].reset_index(drop=True)
-    X, _ = to_model_matrix(Q, stack.features, stack.categories)
+    pri = np.flatnonzero(R["tier"].to_numpy() == "priority")
+    rest = np.flatnonzero(R["tier"].to_numpy() != "priority")
+    pick = np.sort(np.r_[pri, rng.choice(rest, min(40_000, len(rest)), replace=False)])
+    Q = R.iloc[pick].reset_index(drop=True)
     reasons = []
     for lo in range(0, len(Q), 20_000):
-        reasons += explain_rows(stack.xgb, X.iloc[lo:lo + 20_000], Q.iloc[lo:lo + 20_000])
+        part = Q.iloc[lo:lo + 20_000]
+        reasons += explain_rows(ensemble.xgb, ensemble.matrix(part), part)
     Q["reasons"] = [" | ".join(r) for r in reasons]
-    queue_cols = [c for c in keep if c not in ("peer_qty_median",)] + ["peer_qty_median", "reasons"]
+    Q["peer_context"] = peer_context(PeerDeviationScorer().parts(Q))
+    Q["warning"] = us_law_warning(Q)
+    queue_cols = [c for c in out_cols if c in Q] + ["reasons", "peer_context", "warning"]
     Q[queue_cols].to_parquet(QUEUE_PATH, index=False)
     print(f"review queue: {len(Q):,} rows with reasons ({time.time() - t0:.0f}s)")
 
     # ----------------------------------------------------------------- aggregates
     AGG_DIR.mkdir(exist_ok=True)
-    n_excluded = int((~eligible).sum())
-    F["is_priority"] = (F["tier"] == "priority").astype(float)
-    F = F[eligible]                              # aggregates describe the ranked records
+    E = R[R["reporter_type"] == "E"].copy()       # counts and shares: exporter-reported records
+    E["is_priority"] = (E["tier"] == "priority").astype(float)
+    E["percentile"] = percentile_rank(E["score"], E["year"])
     for col, min_n in (("year", 0), ("class", 500), ("order_name", 500), ("taxon_display", 500),
                        ("exporter", 2000), ("importer", 2000), ("product_group", 500),
-                       ("purpose", 500), ("source", 500), ("appendix", 0), ("cluster", 0)):
-        g = F.groupby(col).agg(records=("is_priority", "size"),
-                               priority_share=("is_priority", "mean"),
-                               mean_risk_percentile=("risk_percentile", "mean"))
+                       ("purpose", 500), ("source", 500), ("appendix", 0)):
+        g = E.groupby(col).agg(records=("is_priority", "size"), priority_share=("is_priority", "mean"),
+                               mean_risk_percentile=("percentile", "mean"))
         g = g[g["records"] >= min_n].sort_values("priority_share", ascending=False)
         g.round(5).to_csv(AGG_DIR / f"by_{col}.csv")
-    routes = (F.groupby(["exporter", "importer"])
+    routes = (E.groupby(["exporter", "importer"])
               .agg(records=("is_priority", "size"), priority_share=("is_priority", "mean"))
               .query("records >= 1000").sort_values("priority_share", ascending=False))
     routes.head(300).round(5).to_csv(AGG_DIR / "by_route.csv")
-    summary = {"deployed_stack": name, "records_scored": int(len(F)) + n_excluded,
-               "records_ranked": int(len(F)),
-               "excluded_known_enforcement": n_excluded,
-               "years": [int(F["year"].min()), int(F["year"].max())],
-               "priority_records": int((F["tier"] == "priority").sum()),
-               "review_records": int((F["tier"] == "review").sum()),
-               "kmeans_k_on_cites": int(stack.kmeans.k),
-               "kmeans_silhouette_on_cites": stack.kmeans.silhouette,
-               "kmeans_stability_ari_on_cites": stack.kmeans.stability_ari,
-               # score distribution, so a single new record can be placed on the same ranking
-               "hybrid_score_quantiles": np.quantile(
-                   F["score_hybrid"], np.linspace(0, 1, 1001)).round(8).tolist()}
-    (config.OUTPUTS_DIR / "cites_scoring_summary.json").write_text(json.dumps(summary, indent=2))
-    print(json.dumps(summary, indent=2))
+
+    pri_r = R[R["tier"] == "priority"]
+    mm = marine_mammal(pri_r) & (pri_r["importer"] != "US").to_numpy()
+    summary = {
+        "records_rule_d": int(len(F)), "records_ranked": int(len(R)),
+        "excluded_known_enforcement": int((~eligible).sum()),
+        "years": [int(R["year"].min()), int(R["year"].max())],
+        "consignments": int(pd.Series(R["year"].astype(str) + "|" + R["consignment"].astype(str)).nunique()),
+        "priority_records": int((R["tier"] == "priority").sum()),
+        "review_records": int((R["tier"] == "review").sum()),
+        "priority_consignments_per_year": {
+            str(k): int(v) for k, v in R[R["tier"] == "priority"].groupby("year")["consignment"].nunique().items()},
+        # S6.3: how much of the priority tier the US-law warning covers
+        "priority_share_marine_mammal_non_us_importer": float(mm.mean()) if len(pri_r) else 0.0,
+        "ranked_share_marine_mammal_non_us_importer": float(
+            (marine_mammal(R) & (R["importer"] != "US").to_numpy()).mean()),
+    }
+    (config.OUTPUTS_DIR / "cites_scoring_summary.json").write_text(json.dumps(summary, indent=2, default=int))
+    print(json.dumps(summary, indent=2, default=int))
     print(f"done ({time.time() - t0:.0f}s)")
 
 

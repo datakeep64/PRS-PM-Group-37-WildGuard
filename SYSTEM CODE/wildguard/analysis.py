@@ -1,14 +1,13 @@
-"""Supplementary analyses of the held-out LEMIS results (robustness of the headline claims).
+"""Supplementary analyses of the held-out LEMIS results (after train.py).
 
-  commercial_only  evaluation restricted to purpose = T (commercial) - most CITES trade is
-                   commercial, whereas half of LEMIS enforcement cases are personal imports,
-                   so this is the more relevant (and harder) test for transfer to CITES
-  shipment_level   line items aggregated to shipments (max score, any enforcement) - checks
-                   that multi-item shipments do not inflate line-item metrics
-  by_year          2013 vs 2014 separately (stability over time)
-  calibration      reliability of the hybrid probability in deciles of predicted risk
-  examples         the Indian star tortoise case (in-sample, illustrative) and the
-                   highest-ranked held-out enforcement case
+The held-out sets of DESIGN_QUESTIONS C1 (all, listed, commercial, listed commercial) and the
+shipment-level results of C2 are in lemis_evaluation.json. This adds:
+  personal_only  purpose P: half of LEMIS enforcement cases are personal imports
+  by_year        2013 and 2014 separately (stability over time)
+  calibration    the XGBoost member's probability in deciles (the ensemble score is a rank, so
+                 it has no probability to calibrate)
+  examples       the Indian star tortoise case (in-sample, illustrative) and the highest-ranked
+                 held-out enforcement cases, with their reasons
 
 Run:  python -m wildguard.analysis      (after train.py)
 """
@@ -21,13 +20,15 @@ import pandas as pd
 from . import config
 from .evaluate import evaluate_scores
 from .explain import explain_rows
-from .features import to_model_matrix
+from .features import FeatureBuilder
 from .train import load_lemis
 
-MODELS = ["transfer:hybrid", "transfer:supervised", "full:hybrid", "transfer:unsup_mean",
+MODELS = ["ensemble", "xgboost", "random_forest", "logistic_regression", "full_ensemble",
           "baseline:listing_rule", "baseline:random"]
-KEEP = ["pr_auc", "roc_auc", "precision@1%", "recall@5%", "lift@1%", "inspect_for_80%_recall",
-        "base_rate"]
+KEEP = ["pr_auc", "roc_auc", "precision@1%", "recall@1%", "recall@5%", "lift@1%",
+        "inspect_for_80%_recall", "base_rate"]
+RECORD = ["year", "taxon_display", "common_name", "product_code", "quantity_std", "value_usd",
+          "purpose", "source", "origin", "exporter", "port", "disposition"]
 
 
 def _clean(o):
@@ -38,97 +39,58 @@ def _clean(o):
         return [_clean(v) for v in o]
     if isinstance(o, float) and o != o:
         return None
+    if isinstance(o, (np.floating, np.integer)):
+        return o.item()
     return o
 
 
 def _table(df):
     y = df["label"].to_numpy()
-    return {m: {k: round(v, 4) for k, v in evaluate_scores(y, df[m].to_numpy(), 0.5).items()
+    return {m: {k: round(v, 4) for k, v in evaluate_scores(y, df[m].to_numpy(), np.inf).items()
                 if k in KEEP} for m in MODELS}
 
 
 def main():
     t = pd.read_parquet(config.PROCESSED_DIR / "lemis_test_scores_full.parquet")
-    out = {"commercial_only": _table(t[t["purpose"] == "T"]),
-           "personal_only": _table(t[t["purpose"] == "P"])}
-    out["share_of_test_positives"] = {
-        "commercial": float(t.loc[t.purpose == "T", "label"].sum() / t["label"].sum()),
-        "personal": float(t.loc[t.purpose == "P", "label"].sum() / t["label"].sum())}
-
-    shp = t.groupby("shipment_id").agg(label=("label", "max"), **{m: (m, "max") for m in MODELS})
-    out["shipment_level"] = _table(shp)
-    out["shipment_level_n"] = int(len(shp))
-    out["by_year"] = {int(y): _table(g) for y, g in t.groupby("year")}
-
-    s, y = t["transfer:hybrid"].to_numpy(), t["label"].to_numpy()
+    listed = t[t["sp_listed"]]
+    out = {"personal_only": _table(t[t["purpose"] == "P"]),
+           "share_of_test_positives": {
+               "commercial": float(t.loc[t.purpose == "T", "label"].sum() / t["label"].sum()),
+               "personal": float(t.loc[t.purpose == "P", "label"].sum() / t["label"].sum())},
+           "by_year": {int(y): {"all": _table(g), "listed": _table(g[g["sp_listed"]])}
+                       for y, g in t.groupby("year")}}
+    s, y = listed["xgboost"].to_numpy(), listed["label"].to_numpy()
     dec = pd.qcut(s, 10, labels=False, duplicates="drop")
-    cal = pd.DataFrame({"pred": s, "obs": y, "decile": dec}).groupby("decile").mean()
-    out["calibration_deciles"] = cal.round(5).to_dict(orient="index")
-    out["brier_transfer_hybrid"] = float(np.mean((s - y) ** 2))
+    out["calibration_xgboost_listed"] = pd.DataFrame({"predicted": s, "observed": y, "decile": dec}) \
+        .groupby("decile").mean().round(5).to_dict(orient="index")
 
     # ------------------------------------------------------------------ worked examples
-    stack = joblib.load(config.MODELS_DIR / "transfer_stack.joblib")
-    full = joblib.load(config.MODELS_DIR / "full_stack.joblib")
-    fb = joblib.load(config.MODELS_DIR / "feature_builder_lemis.joblib")
+    ens = joblib.load(config.MODELS_DIR / "tested_ensemble.joblib")
     df = load_lemis()
-    tort = df[df["shipment_id"] == "2000709917"]
-    F = fb.transform(tort)
-    ex = {}
-    for name, st in (("transfer", stack), ("full", full)):
-        sc = st.score(F)
-        X, _ = to_model_matrix(F, st.features, st.categories)
-        ex[name] = {"hybrid_probability": float(sc["hybrid"][0]),
-                    "supervised_probability": float(sc["supervised"][0]),
-                    "reasons": explain_rows(st.xgb, X, F)[0]}
-        # percentile of this score among held-out test shipments' scores, same model
-        ref = t["transfer:hybrid" if name == "transfer" else "full:hybrid"].to_numpy()
-        ex[name]["percentile_vs_test_years"] = float((ref < sc["hybrid"][0]).mean())
-    ex["record"] = tort[["taxon_display", "common_name", "product_code", "quantity_std",
-                         "value_usd", "purpose", "source", "origin", "exporter", "port",
-                         "disposition"]].iloc[0].to_dict()
-    ex["note"] = "shipment year 2000 is a training year: illustrative, in-sample"
-    out["example_tortoise"] = ex
+    fb = FeatureBuilder(use_value=True).fit(df[df["year"].isin(config.TRAIN_YEARS)])  # the tested norms
+    tort = fb.transform(df[df["shipment_id"] == "2000709917"]).reset_index(drop=True)
+    m = ens.member_scores(tort)
+    ref = {k: t[k].to_numpy() for k in ("xgboost", "random_forest")}
+    pct = {k: float((ref[k] < m[k][0]).mean()) for k in ref}
+    out["example_tortoise"] = {
+        "record": tort[RECORD].iloc[0].to_dict(),
+        "member_percentile_vs_test_years": pct,
+        "ensemble_percentile_vs_test_years": (pct["xgboost"] + pct["random_forest"]) / 2,
+        "reasons": explain_rows(ens.xgb, ens.matrix(tort), tort)[0],
+        "note": "shipment year 2000 is a training year: illustrative, in-sample"}
 
-    top = t[t["label"] == 1].sort_values("transfer:hybrid", ascending=False)
+    top = t[t["label"] == 1].sort_values("ensemble", ascending=False)
     top = top.drop_duplicates(["taxon_display", "product_group", "purpose", "origin"]).head(5)
     rows = df[df["shipment_id"].isin(top["shipment_id"])].drop_duplicates("shipment_id")
-    Ft = fb.transform(rows)
-    X, _ = to_model_matrix(Ft, stack.features, stack.categories)
-    reasons = explain_rows(stack.xgb, X, Ft)
+    Ft = fb.transform(rows).reset_index(drop=True)
     out["examples_top_heldout_cases"] = [
-        {**{k: (v if not isinstance(v, (np.floating, np.integer)) else v.item())
-            for k, v in r[["year", "taxon_display", "common_name", "product_code", "quantity_std",
-                           "value_usd", "purpose", "source", "origin", "exporter",
-                           "disposition"]].to_dict().items()},
-         "reasons": rs}
-        for (_, r), rs in zip(Ft.iterrows(), reasons)]
-    # ------------------------------------------------ deployment check: IW vs unweighted
-    # Importance weighting re-focuses the transfer model on CITES-like trade, so the fair
-    # comparison is on held-out LEMIS records that resemble CITES records (CITES-listed taxa).
-    iw_path = config.MODELS_DIR / "transfer_iw_stack.joblib"
-    if iw_path.exists():
-        iw = joblib.load(iw_path)
-        test = df[df["year"].isin(config.TEST_YEARS)].reset_index(drop=True)
-        Fte = fb.transform(test)
-        s_base, s_iw = stack.score(Fte)["hybrid"], iw.score(Fte)["hybrid"]
-        y = Fte["label"].to_numpy()
-        listed = Fte["appendix"].isin(["I", "II", "III"]).to_numpy()
-        commercial = (Fte["purpose"] == "T").to_numpy()
-        check = {}
-        for name, m in (("all_test", np.ones(len(y), bool)), ("cites_listed", listed),
-                        ("cites_listed_commercial", listed & commercial)):
-            check[name] = {"n": int(m.sum()), "positives": int(y[m].sum())}
-            for label, s in (("unweighted", s_base), ("importance_weighted", s_iw)):
-                r = evaluate_scores(y[m], s[m], 0.5)
-                check[name][label] = {k: round(r[k], 4) for k in KEEP}
-        out["deployment_check"] = check
+        {**r[RECORD].to_dict(), "reasons": rs}
+        for (_, r), rs in zip(Ft.iterrows(), explain_rows(ens.xgb, ens.matrix(Ft), Ft))]
 
     (config.OUTPUTS_DIR / "lemis_supplementary.json").write_text(
         json.dumps(_clean(out), indent=2, default=str))
-    print(json.dumps({k: out[k] for k in ("commercial_only", "shipment_level",
-                                          "share_of_test_positives")}, indent=1))
-    print(json.dumps(out["example_tortoise"], indent=1, default=str))
-    print(json.dumps(out["examples_top_heldout_cases"], indent=1, default=str))
+    print(json.dumps(_clean({k: out[k] for k in ("personal_only", "share_of_test_positives")}), indent=1))
+    print(json.dumps(_clean(out["example_tortoise"]), indent=1, default=str))
 
 
 if __name__ == "__main__":

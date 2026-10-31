@@ -40,18 +40,18 @@ def main():
 
     w, h = 1.8, 1.35
     xs = [0.3 + i * (w + 0.33) for i in range(6)]
-    top = [("LEMIS 2000-2014", "5.5M US import\nline items with\nenforcement outcome"),
+    top = [("LEMIS 2000-2014", "5.1M animal import\nline items with\nenforcement outcome"),
            ("Schema alignment", "knowledge model:\nproduct, unit, source,\npurpose, country, appendix"),
-           ("Relative features", "peer-group norms\nlearned on 2000-2010\n(quantity, route, rarity)"),
-           ("Pattern models", "supervised XGBoost on\noutcomes + anomaly: peer z,\nIsolation Forest, K-Means"),
-           ("Hybrid stacker", "meta-learner fitted\non 2011-2012"),
-           ("Evaluation", "held-out 2013-2014:\nPR-AUC, recall @ budget,\nconfidence bands")]
-    bottom = [("CITES 2015-2024", "8.25M animal trade\nrecords, no labels"),
+           ("Relative features", "peer-group norms of\nthe training years\n(quantity, route, rarity)"),
+           ("Supervised ensemble", "XGBoost + random forest\nchosen from 6 candidates;\nrank-averaged"),
+           ("Peer deviation", "unsupervised context;\n4 other detectors tested,\nnone improved the score"),
+           ("Evaluation", "held-out 2013-2014:\nPR-AUC, recall @ budget\nper line and per shipment")]
+    bottom = [("CITES 2015-2024", "5.47M records ranked\n(rule D: one per trade\nwhere possible)"),
               ("Schema alignment", "same crosswalk\n(shared fields only)"),
-              ("Re-normalised features", "peer norms re-learned\nfrom CITES itself\n(no labels needed)"),
-              ("Transfer + re-fitted", "LEMIS-trained XGBoost\n+ detectors re-fitted\non CITES"),
-              ("Hybrid score + tiers", "LEMIS-fitted combiner;\npriority = top 1 % / year,\nreview = next 4 %"),
-              ("Review queue (MVP)", "flag cards with\nplain-language reasons\n(TreeSHAP)")]
+              ("Relative features", "described with the\nLEMIS peer norms"),
+              ("Ensemble score", "retrained on 2000-2014;\nranks within each year"),
+              ("Consignments + tiers", "permit score = highest\nrecord; priority = top 1 %\n/ year, review = next 4 %"),
+              ("Review queue (MVP)", "flag cards: reasons,\npeer context, both\nreports, US-law warning")]
     for i, (x, (t, s)) in enumerate(zip(xs, top)):
         box(ax, x, 3.25, w, h, t, s)
         if i:
@@ -65,7 +65,7 @@ def main():
         if i:
             arrow(ax, xs[i - 1] + w + 0.02, 0.45 + h / 2, x - 0.02, 0.45 + h / 2)
     # what transfers from the LEMIS lane to the CITES lane
-    for i, label in ((1, "same mapping"), (3, "trained model"), (4, "combiner weights")):
+    for i, label in ((1, "same mapping"), (2, "same norms"), (3, "trained models")):
         x = xs[i] + w / 2
         arrow(ax, x, 3.23, x, 1.82, color=ORANGE, ls="--")
         ax.text(x + 0.08, 2.52, label, fontsize=7.6, color=ORANGE, fontweight="bold", va="center")

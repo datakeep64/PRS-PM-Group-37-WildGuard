@@ -6,6 +6,7 @@ validation years, and triage metrics: what share of real enforcement cases is ca
 only the top-k% highest-scored records are inspected, compared with random inspection.
 """
 import numpy as np
+import pandas as pd
 from sklearn.metrics import (average_precision_score, f1_score, precision_recall_curve,
                              precision_score, recall_score, roc_auc_score)
 
@@ -91,3 +92,33 @@ def band_report(y, s, t_low, t_high):
                   "share_of_positives": float(y[m].sum() / max(y.sum(), 1)),
                   "positive_rate": float(y[m].mean()) if m.any() else 0.0}
     return rep
+
+
+def shipment_scores(shipments, y, s):
+    """Line items to shipments: a shipment's score is its highest line score and its label is
+    whether any line is an enforcement case (DESIGN_QUESTIONS C2, S6.1)."""
+    g = pd.DataFrame({"shipment": shipments, "y": y, "s": s}).groupby("shipment", sort=False)
+    return g["y"].max().to_numpy(), g["s"].max().to_numpy()
+
+
+def pr_auc_bootstrap(y, scores, shipments, pairs=None, n_boot=1000, seed=37):
+    """PR-AUC of each score with a 95% interval, and paired differences, resampling shipments
+    (line items of one shipment are not independent). Returns (per-score table, pairs table)."""
+    y = np.asarray(y)
+    codes, uniq = pd.factorize(np.asarray(shipments))
+    rng = np.random.default_rng(seed)
+    boot = {k: np.empty(n_boot) for k in scores}
+    for i in range(n_boot):
+        w = np.bincount(rng.integers(0, len(uniq), len(uniq)), minlength=len(uniq))[codes]
+        keep = w > 0
+        for k, s in scores.items():
+            boot[k][i] = average_precision_score(y[keep], np.asarray(s)[keep], sample_weight=w[keep])
+    single = pd.DataFrame({k: {"pr_auc": average_precision_score(y, s),
+                               "low_95": np.percentile(boot[k], 2.5),
+                               "high_95": np.percentile(boot[k], 97.5)} for k, s in scores.items()}).T
+    rows = []
+    for a, b in pairs or []:
+        d = boot[a] - boot[b]
+        rows.append({"a": a, "b": b, "difference": float(single.loc[a, "pr_auc"] - single.loc[b, "pr_auc"]),
+                     "low_95": float(np.percentile(d, 2.5)), "high_95": float(np.percentile(d, 97.5))})
+    return single, pd.DataFrame(rows)

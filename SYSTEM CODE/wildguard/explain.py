@@ -1,7 +1,8 @@
 """Human-readable explanations for each flag.
 
-For every scored record, XGBoost's exact per-feature contributions (TreeSHAP, via
-pred_contribs=True) say which inputs pushed the risk up. The top positive contributors are
+For every scored record, the XGBoost member's exact per-feature contributions (TreeSHAP, via
+pred_contribs=True) say which inputs pushed the risk up. They explain one of the ensemble's two
+models (DESIGN_QUESTIONS S5.2); the flag card shows the peer-deviation context beside them. The top positive contributors are
 turned into plain-language reasons that an analyst can check against the record, e.g. for the seized
 Indian star tortoise shipment (LEMIS control number 2000709917):
 
@@ -120,8 +121,44 @@ def explain_rows(model, X, frame, top_n=3):
         for j in order:
             if contrib[i, j] <= 0 or len(reasons) >= top_n:
                 break
-            text = reason_for(names[j], r)
+            # a filled gap's flag explains the same feature as the value it stands for
+            text = reason_for(names[j].removesuffix("_missing"), r)
             if text not in reasons:
                 reasons.append(text)
         out.append(reasons)
     return out
+
+
+# --------------------------------------------------------------- context on the flag card
+MARINE_MAMMAL_ORDERS = {"Cetacea", "Sirenia"}
+MARINE_MAMMAL_FAMILIES = {"Odobenidae", "Otariidae", "Phocidae"}
+MARINE_MAMMAL_TAXA = {"enhydra lutris", "lontra felina", "ursus maritimus"}
+
+
+def marine_mammal(df):
+    """Taxa covered by the US Marine Mammal Protection Act (cetaceans, sirenians, pinnipeds,
+    sea and marine otters, polar bear)."""
+    return (df["order_name"].isin(MARINE_MAMMAL_ORDERS) | df["family"].isin(MARINE_MAMMAL_FAMILIES)
+            | df["taxon"].isin(MARINE_MAMMAL_TAXA)).to_numpy()
+
+
+def us_law_warning(df):
+    """DESIGN_QUESTIONS S6.3: marine-mammal products are refused in LEMIS mostly because US law
+    prohibits their import, so the pattern may not mean risk in trade that does not involve the
+    US. Returns the warning text per record ('' where it does not apply)."""
+    applies = marine_mammal(df) & (df["importer"] != "US").to_numpy()
+    return np.where(applies, "This pattern may reflect US law: the US Marine Mammal Protection Act "
+                    "restricts imports of marine-mammal products, and this trade does not involve "
+                    "the US.", "")
+
+
+PEER_LABELS = {"quantity": "quantity far from its peers'", "route": "rare route for this genus",
+               "combination": "rare product, purpose and source combination",
+               "purpose": "unusual purpose for this genus", "source": "unusual source for this genus"}
+
+
+def peer_context(parts, threshold=0.7):
+    """The peer-deviation components above `threshold`, as short phrases per record."""
+    names = list(parts)
+    M = np.column_stack([parts[k] for k in names])
+    return [", ".join(PEER_LABELS[names[j]] for j in np.flatnonzero(row >= threshold)) for row in M]

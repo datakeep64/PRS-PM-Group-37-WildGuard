@@ -27,11 +27,16 @@ CITES_PARQUET = PROCESSED_DIR / "cites_aligned.parquet"
 CITES_SCORED_PARQUET = PROCESSED_DIR / "cites_scored.parquet"
 DATASETS_JSON = OUTPUTS_DIR / "datasets.json"
 
-# Temporal split on LEMIS (shipment year). Test years are never used for fitting
-# models, peer-group statistics, thresholds or the hybrid combiner.
-TRAIN_YEARS = range(2000, 2011)     # 2000-2010
-VALID_YEARS = range(2011, 2013)     # 2011-2012  (threshold + hybrid-combiner fitting)
-TEST_YEARS = range(2013, 2015)      # 2013-2014  (held-out evaluation)
+# Year roles on LEMIS (shipment year; SYSTEM CODE/DESIGN_QUESTIONS.md B1). The design was
+# chosen on the selection year; the test years are used once, for the reported results; the
+# deployed model is then refitted on all years, because performance falls with the gap
+# between the training years and the scored year (notebook 13).
+TRAIN_YEARS = range(2000, 2011)     # 2000-2010  models and peer norms
+SELECTION_YEAR = 2011               # design choices (notebooks 08-14)
+HELD_BACK_YEAR = 2012               # confidence bands of the LEMIS triage view
+VALID_YEARS = range(2011, 2013)     # 2011-2012, kept for code that still reads it
+TEST_YEARS = range(2013, 2015)      # 2013-2014  the one test
+DEPLOY_YEARS = range(2000, 2015)    # 2000-2014  the deployed model
 
 # CITES scoring window: animal records from the years after LEMIS coverage ends.
 CITES_SCORE_YEARS = range(2015, 2025)

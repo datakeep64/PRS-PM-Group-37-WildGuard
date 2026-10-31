@@ -1,22 +1,23 @@
-"""Secondary evaluation on CITES - plausibility and directional consistency, not accuracy.
+"""Secondary evaluation on CITES - consistency with independent evidence, not accuracy.
 
-CITES has no enforcement labels (the CITES Illegal Trade Database is access-restricted), so
-no precision/recall claim is made here. Three checks instead:
+CITES has no enforcement labels (the CITES Illegal Trade Database is access-restricted), so no
+precision or recall claim is made here. The three checks and what counts as a pass were fixed
+before the rebuild (DESIGN_QUESTIONS.md C7). A pass means the ranking is consistent with
+independent evidence, not that it is accurate.
 
-1. Consistency with independent seizure statistics (UNODC World Wildlife Crime Report 2024,
-   Fig. 2.1: share of 2015-2021 seizure records by species group). For each animal group we
-   compute how over-represented it is in seizures relative to its share of legal CITES
-   trade (seizure-to-trade ratio), and test with Spearman's rank correlation whether
-   WildGuard flags groups more often where that ratio is higher. The same test is run on
-   two baselines (listing rule, unsupervised-only) for comparison.
+1. UNODC consistency. For the 14 animal groups of the World Wildlife Crime Report 2024 (Fig. 2.1),
+   how over-represented each group is in seizures relative to its share of legal trade
+   (exporter-reported CITES records 2015-2021), against WildGuard's priority share for the group.
+   Pass: Spearman rho positive with a one-sided permutation p-value below 0.05, and higher than
+   the rho of the "most endangered first" listing rule.
+2. Confiscated-specimen proxy. The ensemble retrained without any source-derived feature ranks
+   the rule D records, including the source I records the ranking sets aside. Pass: the lower
+   end of the 95% bootstrap interval of ROC-AUC for source I is above 0.5.
+3. Review of the top-ranked records: the 50 highest-ranked priority records, one per taxon,
+   exported for the two team members to classify independently (categories in C7).
 
-2. Confiscated-specimen proxy. CITES source code "I" marks confiscated/seized specimens.
-   A transfer model retrained *without any source-derived feature* is asked to rank CITES
-   records; ROC-AUC for source == "I" vs the rest measures whether patterns learned from
-   US enforcement outcomes point toward independently-marked enforcement material.
-
-3. Top-N qualitative review: the highest-ranked records with their reasons, for a human
-   plausibility read (written up in the report).
+Also reported, without a pass criterion: the share of priority flags on marine-mammal products
+traded between other countries (S6.3).
 
 Run:  python -m wildguard.validate_cites      (after score_cites.py)
 """
@@ -29,9 +30,12 @@ from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 
 from . import cites_features, config
-from .features import SHARED_FEATURES, to_model_matrix
-from .models import train_xgb
+from .features import SHARED_FEATURES
+from .models import Ensemble
 from .train import listing_rule_score, load_lemis
+
+SOURCE_DERIVED = ("source", "is_wild", "source_share_in_genus", "combo_rarity")
+MIN_RECORDS = 500          # groups with fewer records in the window are flagged as unstable
 
 # UNODC WWCR 2024, Fig. 2.1 - % of seizure records 2015-2021 (animal groups only)
 UNODC_SEIZURE_SHARE = {
@@ -63,68 +67,72 @@ def unodc_group(df):
     return np.select(conds, list(UNODC_SEIZURE_SHARE), default="(other)")
 
 
-def check_unodc(S):
-    s = S[S["year"].between(2015, 2021) & (S["tier"] != "excluded")].copy()
+def check_unodc(S, n_perm=10_000):
+    s = S[S["year"].between(2015, 2021) & (S["tier"] != "excluded") & (S["reporter_type"] == "E")].copy()
     s["group"] = unodc_group(s)
     s = s[s["group"] != "(other)"]
-    s["listing_rule"] = listing_rule_score(s)
     s["is_priority"] = (s["tier"] == "priority").astype(float)
-    # baselines expressed the same way: share of records in their own top 1% per year
-    for col in ("listing_rule", "score_unsup_mean", "score_supervised"):
-        pct = s.groupby("year")[col].rank(pct=True, method="first")
-        s[f"top1_{col}"] = (pct > 0.99).astype(float)
+    pct = pd.Series(listing_rule_score(s)).groupby(s["year"].to_numpy()).rank(pct=True, method="first")
+    s["listing_rule_top1"] = (pct.to_numpy() > 0.99).astype(float)
     g = s.groupby("group").agg(cites_records=("year", "size"),
                                wildguard_priority_share=("is_priority", "mean"),
-                               supervised_only_top1=("top1_score_supervised", "mean"),
-                               unsupervised_only_top1=("top1_score_unsup_mean", "mean"),
-                               listing_rule_top1=("top1_listing_rule", "mean"))
+                               listing_rule_top1=("listing_rule_top1", "mean"))
     g["unodc_seizure_share"] = pd.Series(UNODC_SEIZURE_SHARE) / sum(UNODC_SEIZURE_SHARE.values())
     g["cites_trade_share"] = g["cites_records"] / g["cites_records"].sum()
     g["seizure_to_trade_ratio"] = g["unodc_seizure_share"] / g["cites_trade_share"]
+    g["unstable_fewer_than_500_records"] = g["cites_records"] < MIN_RECORDS
     g = g.sort_values("seizure_to_trade_ratio", ascending=False)
-    tests = {}
-    for col in ("wildguard_priority_share", "supervised_only_top1", "unsupervised_only_top1",
-                "listing_rule_top1"):
-        rho, p = spearmanr(g["seizure_to_trade_ratio"], g[col])
-        tests[col] = {"spearman_rho": round(float(rho), 3), "p_value": round(float(p), 4)}
-    g.round(5).to_csv(config.OUTPUTS_DIR / "cites_unodc_consistency.csv")
-    return {"n_groups": int(len(g)), "spearman_vs_seizure_to_trade_ratio": tests}
-
-
-def check_confiscated_proxy():
-    """Retrain the transfer model without source-derived features, then test whether it
-    ranks CITES source='I' (confiscated/seized) records above the rest."""
-    no_source = [f for f in SHARED_FEATURES
-                 if f not in ("source", "is_wild", "source_share_in_genus", "combo_rarity")]
-    fb = joblib.load(config.MODELS_DIR / "feature_builder_lemis.joblib")
-    df = load_lemis()
-    tr, va = df["year"].isin(config.TRAIN_YEARS), df["year"].isin(config.VALID_YEARS)
-    Ftr, Fva = fb.transform(df[tr]), fb.transform(df[va])
-    Xtr, cats = to_model_matrix(Ftr, no_source)
-    Xva, _ = to_model_matrix(Fva, no_source, cats)
-    model = train_xgb(Xtr, Ftr["label"].values, Xva, Fva["label"].values)
-    del df, Ftr, Fva, Xtr, Xva
-
-    F = cites_features.load_features(columns=no_source + ["source"])
-    p = np.concatenate([model.predict_proba(to_model_matrix(F.iloc[i:i + 1_000_000], no_source,
-                                                            cats)[0])[:, 1]
-                        for i in range(0, len(F), 1_000_000)])
-    y = (F["source"] == "I").to_numpy()
+    rho_w = float(spearmanr(g["seizure_to_trade_ratio"], g["wildguard_priority_share"])[0])
+    rho_l = float(spearmanr(g["seizure_to_trade_ratio"], g["listing_rule_top1"])[0])
     rng = np.random.default_rng(config.RANDOM_STATE)
-    return {"n_source_I": int(y.sum()), "share_source_I": float(y.mean()),
-            "auc_no_source_transfer_model": round(float(roc_auc_score(y, p)), 4),
-            "auc_random": round(float(roc_auc_score(y, rng.random(len(y)))), 4),
-            "share_of_source_I_in_top_5pct": float(
-                y[p >= np.quantile(p, 0.95)].sum() / max(y.sum(), 1))}
+    v = g["wildguard_priority_share"].to_numpy()
+    perm = np.array([spearmanr(g["seizure_to_trade_ratio"], rng.permutation(v))[0] for _ in range(n_perm)])
+    p = float((np.sum(perm >= rho_w) + 1) / (n_perm + 1))
+    g.round(5).to_csv(config.OUTPUTS_DIR / "cites_unodc_consistency.csv")
+    return {"n_groups": int(len(g)), "spearman_rho_wildguard": round(rho_w, 3),
+            "permutation_p_one_sided": round(p, 4), "spearman_rho_listing_rule": round(rho_l, 3),
+            "unstable_groups": g.index[g["unstable_fewer_than_500_records"]].tolist(),
+            "pass": bool(rho_w > 0 and p < 0.05 and rho_w > rho_l)}
 
 
-def top_n(n=25):
+def check_confiscated_proxy(n_boot=1000):
+    feats = [f for f in SHARED_FEATURES if f not in SOURCE_DERIVED]
+    fb = joblib.load(config.MODELS_DIR / "feature_builder_lemis.joblib")    # the deployed norms
+    df = load_lemis()
+    df = df[df["year"].isin(config.DEPLOY_YEARS)]
+    F = fb.transform(df)
+    model = Ensemble(feats).fit(F, F["label"].to_numpy())
+    del df, F
+    C = cites_features.load_features(columns=list(dict.fromkeys(SHARED_FEATURES + ["source", "rule_d", "year"])))
+    C = C[C["rule_d"]].reset_index(drop=True)
+    s = model.score(C, groups=C["year"].to_numpy())
+    y = (C["source"] == "I").to_numpy()
+    rng = np.random.default_rng(config.RANDOM_STATE)
+    idx_pos, idx_neg = np.flatnonzero(y), np.flatnonzero(~y)
+    boot = []
+    for _ in range(n_boot):
+        i = np.r_[rng.choice(idx_pos, len(idx_pos)), rng.choice(idx_neg, min(len(idx_neg), 500_000))]
+        boot.append(roc_auc_score(y[i], s[i]))
+    lo, hi = np.percentile(boot, [2.5, 97.5])
+    auc = float(roc_auc_score(y, s))
+    return {"features_removed": list(SOURCE_DERIVED), "n_source_I": int(y.sum()),
+            "roc_auc": round(auc, 4), "low_95": round(float(lo), 4), "high_95": round(float(hi), 4),
+            "share_of_source_I_in_top_5pct": round(float(y[s >= np.quantile(s, 0.95)].sum() / max(y.sum(), 1)), 4),
+            "pass": bool(lo > 0.5)}
+
+
+def top_for_review(n=50):
+    """The n highest-ranked priority records, one per taxon, with blank columns for the two
+    reviewers' categories: (a) recognised risk pattern, (b) a US legal regime carried abroad,
+    (c) no apparent reason."""
     q = pd.read_parquet(config.SAMPLES_DIR / "cites_review_queue.parquet")
-    q = q[q["tier"] != "excluded"].sort_values("score_hybrid", ascending=False)
-    q = q.drop_duplicates(["taxon_display", "product_code", "exporter", "importer", "purpose"])
-    cols = ["year", "taxon_display", "product_code", "quantity_std", "unit_group", "purpose",
-            "source", "exporter", "importer", "appendix", "risk_percentile", "reasons"]
-    q.head(n)[cols].to_csv(config.OUTPUTS_DIR / "cites_top25_review.csv", index=False)
+    q = q[q["tier"] == "priority"].sort_values("score", ascending=False).drop_duplicates("taxon_display")
+    cols = ["year", "taxon_display", "product_code", "quantity_std", "unit_group", "purpose", "source",
+            "exporter", "importer", "appendix", "score", "reasons", "peer_context", "warning"]
+    out = q.head(n)[cols].assign(reviewer_1="", reviewer_2="")
+    out.to_csv(config.OUTPUTS_DIR / "cites_top50_review.csv", index=False)
+    return {"records": int(len(out)), "file": "cites_top50_review.csv",
+            "pass_rule": "at least half in (a) and at most a fifth in (c), per reviewer"}
 
 
 def make_figure():
@@ -133,8 +141,8 @@ def make_figure():
     import matplotlib.pyplot as plt
     plots.apply_style()
     g = pd.read_csv(config.OUTPUTS_DIR / "cites_unodc_consistency.csv")
-    rho = json.loads((config.OUTPUTS_DIR / "cites_validation.json").read_text())[
-        "unodc_consistency"]["spearman_vs_seizure_to_trade_ratio"]["wildguard_priority_share"]
+    u = json.loads((config.OUTPUTS_DIR / "cites_validation.json").read_text())["unodc_consistency"]
+    rho = {"spearman_rho": u["spearman_rho_wildguard"], "p_value": u["permutation_p_one_sided"]}
     fig, ax = plt.subplots(figsize=(7.2, 4.6))
     ax.set_axisbelow(True)
     ax.scatter(g["seizure_to_trade_ratio"], g["wildguard_priority_share"] * 100, s=42,
@@ -169,11 +177,17 @@ def make_figure():
 
 
 def main():
-    S = pd.read_parquet(config.PROCESSED_DIR / "cites_scored.parquet")
+    S = pd.read_parquet(config.PROCESSED_DIR / "cites_scored.parquet",
+                        columns=["year", "tier", "reporter_type", "class", "order_name", "family",
+                                 "appendix", "source"])
     out = {"unodc_consistency": check_unodc(S)}
     del S
-    top_n()
+    out["top_records_for_review"] = top_for_review()
     out["confiscated_proxy"] = check_confiscated_proxy()
+    summary = json.loads((config.OUTPUTS_DIR / "cites_scoring_summary.json").read_text())
+    out["marine_mammal_non_us_importer"] = {
+        "share_of_priority_records": summary["priority_share_marine_mammal_non_us_importer"],
+        "share_of_ranked_records": summary["ranked_share_marine_mammal_non_us_importer"]}
     (config.OUTPUTS_DIR / "cites_validation.json").write_text(json.dumps(out, indent=2))
     make_figure()
     print(json.dumps(out, indent=2))
