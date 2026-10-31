@@ -602,13 +602,13 @@ def page_queue():
         keep &= P["both_reports"].to_numpy()
     v = P[keep].sort_values(["top", "year"], ascending=[True, False]).reset_index(drop=True)
 
-    left, right = st.columns([1.2, 1], gap="large")
+    left, right = st.columns([1.5, 1], gap="medium")
     with left:
         st.markdown(f"**{len(v):,} permits**" + ("" if tier == "priority" else
                                                  " · a random sample of this tier"))
         cols = {"Rank": v["rank"]} | ({"Year": v["year"]} if year == "All years" else {}) | {
-            "Taxon": v["taxon_label"], "Product": v["product_code"].astype(str),
-            "Route": v["route"], "Records": v["records"]}
+            "Taxon": v["taxon_label"], "Route": v["route"],
+            "Product": v["product_code"].astype(str)}
         event = st.dataframe(
             pd.DataFrame(cols).head(3000), hide_index=True, use_container_width=True, height=640,
             on_select="rerun", selection_mode="single-row",
@@ -621,10 +621,8 @@ def page_queue():
                 "Taxon": st.column_config.Column(width="medium",
                                                  help="The record that sets the permit's score; "
                                                       "+n = other taxa on the permit"),
-                "Product": st.column_config.Column(width="medium"),
                 "Route": st.column_config.Column(width="small", help="Exporter → importer"),
-                "Records": st.column_config.NumberColumn(width="small",
-                                                         help="Records on this permit")})
+                "Product": st.column_config.Column(width="medium")})
         if len(v) > 3000:
             st.caption("Showing the first 3,000. Narrow the list with the filters.")
     with right:
@@ -663,9 +661,10 @@ def page_check():
     st.title("Check a record")
     st.markdown("Enter one trade record to see where WildGuard would rank it and why. It is "
                 "ranked as if it were a permit on its own, against that year's CITES permits.")
-    demo = st.query_params.get("example") == "tortoise"     # deep link used for the demo video
+    # deep links for the demo video: ?page=check&example=tortoise (or saiga, pythons)
     names = list(PRESETS)
-    preset = st.selectbox("Start from an example", names, index=1 if demo else 0)
+    demo = {"tortoise": 1, "saiga": 2, "pythons": 3}.get(st.query_params.get("example"))
+    preset = st.selectbox("Start from an example", names, index=demo or 0)
     p = PRESETS[preset]
     us = st.toggle("Add US import declaration details (declared value, entry port, month)",
                    value=p["us"], key=f"us::{preset}",
