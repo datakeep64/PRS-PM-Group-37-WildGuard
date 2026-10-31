@@ -59,7 +59,7 @@ Learning Systems).
 | **0 · Select records** (new) | All LEMIS line items; all CITES animal records, both reporter types | LEMIS animals with a class; CITES rule D, Appendix `N` removed, source `I` / purpose `L` out of the ranking | — |
 | **1 · Align** | Codes mapped by name; `P`/`O`, `Y`/`N` and some countries unmapped; latest appendix | Full crosswalk; higher taxa one way; appendix in force; product groups by coding (done on branch `rework`) | — |
 | **2 · Features** | Peer norms per population; peer groups on the current product groups | Peer groups on the new product groups and higher taxa; CITES described against LEMIS norms (S2.1); permit ID carried, not a feature | feature selection (B8) |
-| **3 · Supervised** | XGBoost on all line items, chosen in advance | Trained on animals with a class; model chosen by Part B | Part B |
+| **3 · Supervised** | XGBoost on all line items, chosen in advance | XGBoost chosen by comparison (B5): no class weights, depth 6, trained on animals with a class | — |
 | **4 · Unsupervised** | Peer deviation, Isolation Forest, K-Means, refitted on all CITES records | Refitted on rule D's records; detectors chosen by Part B | Part B |
 | **5 · Hybrid** | Meta-learner over all four signals, fitted on 2011–12, reused on CITES; reasons from the supervised model | One stacking layer; members chosen by Part B | S5.1 weights on CITES; S5.2 reasons |
 | **6 · Rank and review** (new) | Line items, within each year | Within each year; tiers by budget | S6.1 review unit; S6.2 flag-card context; S6.3 US-specific taxa |
@@ -263,7 +263,7 @@ decided. Brackets mark wording that depends on a decision.
    the CITES listing in force at the time of the shipment.
 3. **Features.** Deviation from the peer norms of LEMIS's training years:
    quantity against peers, route rarity, unusual purpose or source [, consignment make-up].
-4. **Supervised.** [The model(s) chosen in Part B] learn from LEMIS outcomes: refused, seized,
+4. **Supervised.** XGBoost, chosen from six candidates, learns from LEMIS outcomes: refused, seized,
    abandoned or re-exported vs cleared.
 5. **Unsupervised.** Label-free anomaly scores [from the detectors chosen in Part B], refitted on
    the CITES records being scored.
@@ -403,7 +403,16 @@ imbalance handling to test.* RQ2.
   rerun on the rebuilt data (Part C), it is also judged on PR-AUC, and the report says that the
   metric changed and why.
 
-**B5 Choosing among the supervised candidates.** *To test.* RQ2.
+**B5 Choosing among the supervised candidates.** *Decided: XGBoost* (31 October 2026, notebook
+10). RQ2. On listed 2011 line items random forest (PR-AUC 0.570) and XGBoost (0.565) were tied
+(difference −0.005, interval −0.012 to +0.002); all other candidates were significantly worse.
+The rule below chose random forest. After seeing the tie, the choice was made on deployment cost
+instead: random forest would add roughly 340 MB to the hosted app and need an extra package for
+its reasons, while XGBoost is 1 MB with exact contributions built in. The chosen configuration
+uses no class-imbalance handling, depth 6, learning rate 0.05 and minimum child weight 20.
+Notebook 10 also found that class weights lowered PR-AUC for every strong candidate (T3), and
+that the strong candidates' errors are highly correlated (T5). The original rule, for the
+record:
 - Each tuned candidate is scored on 2011 (B1).
 - Draft rule: the best on the B4 metric is chosen; a candidate whose paired-bootstrap interval
   against the best includes zero counts as tied; ties go to the simpler model, in the order
@@ -643,3 +652,4 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 | C5 US-overlap set | Not usable as labelled CITES data | 31 October 2026 | notebook 07, U1–U4: cases covered 39.1% vs cleared 72.0% |
 | S2.1 Peer norms on CITES | LEMIS training-year norms | 31 October 2026 | notebook 08, N1–N3: target norms significantly worse on 2 of 6 held-out populations |
 | S2.2 Consignment features | `cons_sources` (distinct sources in the shipment or permit) | 31 October 2026 | notebook 09, K1–K4: +0.002 PR-AUC, interval just above zero |
+| B5 Supervised model | XGBoost, configuration 5 (no imbalance handling, depth 6, learning rate 0.05) | 31 October 2026 | notebook 10, T1–T6: tied with random forest (0.565 vs 0.570); tie broken on deployment cost after the result was seen, not by the written rule |
