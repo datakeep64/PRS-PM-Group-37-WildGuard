@@ -7,40 +7,44 @@
 | Abinaya Muruganandam | A0181013X | Member |
 | Adhithi Muruganandam | A0181014W | Team Leader |
 
-WildGuard learns what preceded enforcement action in **5.5 million US wildlife import
-declarations with real outcomes (LEMIS)**, and uses those patterns, together with label-free
-anomaly detection, to rank **8.25 million global CITES trade records (2015–2024)** for human
-review.
+WildGuard learns what preceded enforcement action in **US wildlife import declarations with real
+outcomes (LEMIS, 2000–2014)**, and uses those patterns to rank **CITES export permits from
+2015–2024** within each year, so that reviewers look at the riskiest trade first.
 
 ### Results
 
-On held-out LEMIS shipments from 2013–2014, which were never used for training or tuning:
+The one test: LEMIS shipments of CITES-listed species from 2013–2014, which were never used for
+training or for any design choice, counted per shipment.
 
-| If an inspector can check… | WildGuard catches | Random inspection | "Most endangered first" rule |
+| If an inspector can check… | WildGuard finds | Random inspection | "Most endangered first" rule |
 |---|---|---|---|
-| top 1% of shipments | **50%** of enforcement cases (79% of flags are real cases) | 1% | 2% |
-| top 5% of shipments | **70%** | 5% | 9% |
-| to catch 80% of cases, inspect… | **13%** of shipments | 80% | 71% |
+| top 1% of shipments | **26%** of the shipments with an enforcement case (99% of these flags are real cases) | 1% | 1% |
+| top 5% of shipments | **63%** | 5% | 6% |
+| to find 80% of cases, inspect… | **21%** of shipments | 80% | 80% |
 
-PR-AUC is **0.599**, against 0.016 for random inspection, using only fields that CITES also records.
-On CITES, where no labels exist, two independent checks support the ranking. First, it agrees with
-UNODC seizure statistics (Spearman ρ = 0.864).
-Second, a model that never sees the source field ranks CITES's confiscated-specimen records far
-above the rest (ROC-AUC 0.87).
+PR-AUC per line item is **0.540** (95% interval 0.519–0.559), against 0.026 for the listing rule
+and 0.020 for random inspection, using only fields that CITES also records. XGBoost alone scored
+0.006 higher than the chosen two-model ensemble on this test; the ensemble had been chosen
+beforehand and was kept.
 
-A flag means *"this record resembles shipments that historically drew enforcement action, or
-deviates sharply from normal trade for its species"*. It is a prompt for limited human attention,
-not evidence that a law was broken.
+On CITES, 5,465,862 records are ranked in 3,239,575 export permits; 32,390 permits fall in the
+priority tier. CITES has no outcomes, so three checks were fixed in advance: the ranking agrees
+with UNODC seizure statistics (Spearman ρ = 0.54, pass), a model that never sees the source field
+ranks confiscated specimens above other records (ROC-AUC 0.888, pass), and in a review of the 50
+top-ranked taxa 30% showed no recognised risk pattern (fail; the pass mark was 20%).
+
+A flag means *"this permit's records resemble trade that US officers stopped"*. It is a prompt for
+limited human attention, not evidence that a law was broken.
 
 ## Repository structure (mapped to the submission requirements)
 
 | Requirement | Location |
 |---|---|
-| 1. Runnable pattern recognition system | [`SYSTEM CODE/`](SYSTEM%20CODE/) — pipeline package `wildguard/`, Streamlit MVP `app/app.py`, trained `models/`, evaluation `outputs/` |
-| 2. Datasets | [`DATA/`](DATA/) — sources, versions and citations, download script, codebook, data samples |
-| 3. Code, model files, supporting documents | [`SYSTEM CODE/wildguard/`](SYSTEM%20CODE/wildguard/), [`SYSTEM CODE/models/`](SYSTEM%20CODE/models/), [`SYSTEM CODE/outputs/`](SYSTEM%20CODE/outputs/) |
-| 4. Group final project report | [`Project Report/`](Project%20Report/) — `.pdf`, `.docx` and `.md` |
-| 5. Presentation files | [`Presentation/`](Presentation/) — first presentation (PDF), final presentation (`.pptx`) and video script |
+| 1. Runnable pattern recognition system | [`SYSTEM CODE/`](SYSTEM%20CODE/) — pipeline package `wildguard/`, Streamlit MVP `app/app.py`, trained `models/`, evaluation `outputs/`, design notebooks `notebooks/` |
+| 2. Datasets | [`DATA/`](DATA/) — sources, versions and citations, download script, codebook, the rules for reading and aligning both datasets |
+| 3. Code, model files, supporting documents | [`SYSTEM CODE/wildguard/`](SYSTEM%20CODE/wildguard/), [`SYSTEM CODE/models/`](SYSTEM%20CODE/models/), [`SYSTEM CODE/outputs/`](SYSTEM%20CODE/outputs/), [`SYSTEM CODE/DESIGN_QUESTIONS.md`](SYSTEM%20CODE/DESIGN_QUESTIONS.md) |
+| 4. Group final project report | [`Project Report/`](Project%20Report/) — `WildGuard_Final_Report.docx` |
+| 5. Presentation files | [`Presentation/`](Presentation/) — first presentation (PDF), final presentation slides and the video recording guide |
 
 ## Quick start
 
@@ -62,10 +66,10 @@ bash "SYSTEM CODE/run_pipeline.sh"
 
 | Aspect | In WildGuard |
 |---|---|
-| Supervised / unsupervised learning | XGBoost, Random Forest and Logistic Regression on LEMIS outcomes; peer-deviation score, Isolation Forest and K-Means distance without labels |
-| Machine learning techniques | Gradient boosting with early stopping, bagging, clustering with silhouette selection, isolation-based outlier detection |
-| Hybrid ML / ensemble | Tree ensembles, plus a stacked meta-learner over supervised and unsupervised signals |
-| Sense making | LEMIS ↔ CITES knowledge model, TreeSHAP reasons on every flag, confidence-aware triage bands, risk-pattern analytics |
+| Supervised / unsupervised learning | Six supervised candidates compared under one protocol (logistic regression, naive Bayes, decision tree, random forest, AdaBoost, XGBoost); five unsupervised detectors tested (peer deviation, Isolation Forest, K-Means, Gaussian mixture, DBSCAN), with the peer-deviation score kept as context |
+| Machine learning techniques | Gradient boosting with early stopping, bagging, time-ordered cross-validation, class-imbalance handling compared, feature selection by groups, PCA to show the shift between the datasets |
+| Hybrid ML / ensemble | XGBoost and a random forest combined by rank averaging, chosen by forward selection against a stacked meta-learner and the detectors |
+| Sense making | The LEMIS ↔ CITES knowledge model, plain-language reasons from TreeSHAP on every flag, peer context, a permit-level review queue, confidence-aware triage bands |
 
 ## Data sources
 
@@ -74,11 +78,10 @@ bash "SYSTEM CODE/run_pipeline.sh"
 * **CITES**: Full CITES Trade Database Download. Version 2026.1. Compiled by UNEP-WCMC,
   Cambridge, UK for the CITES Secretariat, Geneva, Switzerland. Available at: trade.cites.org.
 
-See [`DATA/README.md`](DATA/README.md) for the full citations and the schema alignment, and
+See [`DATA/README.md`](DATA/README.md) for the full citations,
 [`DATA/USING_LEMIS_AND_CITES.md`](DATA/USING_LEMIS_AND_CITES.md) for how both datasets must be read
 according to their publishers' documentation, and
 [`DATA/ALIGNING_LEMIS_AND_CITES.md`](DATA/ALIGNING_LEMIS_AND_CITES.md) for how WildGuard aligns them.
 Any change to the pipeline or app should follow both.
-[`SYSTEM CODE/DESIGN_QUESTIONS.md`](SYSTEM%20CODE/DESIGN_QUESTIONS.md) shows how the system design
-changes after the alignment, stage by stage, how its models are chosen, and the questions still
-open before the pipeline is rebuilt.
+[`SYSTEM CODE/DESIGN_QUESTIONS.md`](SYSTEM%20CODE/DESIGN_QUESTIONS.md) sets out the system design
+stage by stage, how each model was chosen and evaluated, and the log of every decision.

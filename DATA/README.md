@@ -14,7 +14,7 @@ crosswalk, the checks every pipeline should pass, and the known deviations in th
 | What it records | Every wildlife import declared to USFWS                                                 | Trade in CITES-listed species reported by all Parties                                                 |
 | Version used    | Zenodo record 3565869, **v1.1.0** (Dec 2019), 2000–2014                          | **Full download v2026.1** (files dated June 2026)                                               |
 | Size            | 5,512,706 import line items (2,088,676 shipments), 974 MB                               | 29,170,051 records (1975–2026), 4.5 GB in 59 CSVs                                                    |
-| Used here       | All imports 2000–2014, labelled                                                        | Animal records 2015–2024 for scoring (8.25M); 2013–2014 US-reported records for the alignment check |
+| Used here       | Animals with a taxonomic class, 2000–2014, labelled (5,107,119 line items)             | Animal records 2015–2024 (8.25M), of which 5,465,862 are ranked (each trade once, rule D); 2013–2014 US-reported records for the alignment check |
 | Labels          | `action` (Cleared/Refused) and `disposition` (Cleared/Seized/Abandoned/Re-exported) | none (the CITES Illegal Trade Database is access-restricted)                                          |
 | Declared value  | yes (`value`, USD)                                                                    | no                                                                                                    |
 | Licence / terms | CC-BY-4.0                                                                               | free for use with citation (see below)                                                                |
@@ -35,8 +35,6 @@ DATA/
 ├── processed/              (not in git) aligned parquet files rebuilt by the pipeline
 ├── reference/              LEMIS codebook (country, port, purpose, source, unit, product codes)
 └── samples/                small extracts committed so the data can be inspected and the app runs
-    ├── lemis_aligned_sample.csv       1% random sample of aligned LEMIS imports, with labels
-    ├── cites_aligned_sample.csv       0.5% random sample of aligned CITES animal records 2015-2024
     ├── cites_review_queue.parquet     all priority-tier CITES records + 40k others, scored, with reasons
     ├── lemis_head.csv                 first 5 rows of the raw LEMIS CSV, verbatim (app Overview)
     └── cites_head.csv                 first 5 animal records 2015-2024 of the raw CITES download, verbatim (app Overview)
