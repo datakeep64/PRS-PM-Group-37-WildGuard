@@ -649,6 +649,9 @@ transfer check: on no held-out region is it significantly worse than XGBoost alo
       involve the US;
     - **(c) no apparent reason.**
   - Both team members classify the 50 independently, and their agreement is reported.
+    *Changed on 31 October 2026, before the classification was seen:* the categories are
+    applied by a stated rule (`validate_cites.classify`) instead of two reviewers, so no
+    agreement is reported. Records matching none of (a) and (b) fall in (c).
   - **Pass:** at least half in (a) and at most a fifth in (c). Category (b) is reported as the
     jurisdiction effect (C4, S6.3), neither a pass nor a fail.
 - **Reported without a pass criterion:** the share of priority flags in marine-mammal taxa where
@@ -729,4 +732,6 @@ checked before the next.
 | S5.2 Reasons | XGBoost's contributions, with the peer-deviation signal beside them | 31 October 2026 | Choice |
 | S6.2 Flag card | Context only: the consignment's records and both countries' reports | 31 October 2026 | Choice |
 | S6.3 US-specific taxa | Warning on the flag card | 31 October 2026 | Choice |
+| C7 Check 3 method | The categories applied by a stated rule instead of two human reviewers | 31 October 2026 | Team time; decided before the classification was seen |
+| C7 Check 3 result | Fails: 62% (a), 8% (b), 30% (c), against at most 20% (c). All 15 (c) records are personal-purpose imports of wild Appendix II specimens (11 into the US, 4 into New Zealand), a pattern US enforcement acts on (personal imports refused 25.5% in LEMIS) but not one of C7's recognised patterns. Reported as a fail, not re-ruled | 31 October 2026 | `outputs/cites_top50_review.csv`, `cites_validation.json` |
 | B10 The one test | Ensemble kept as decided: on 2013–2014 it scored PR-AUC 0.540 on listed line items, 0.006 below XGBoost alone (interval −0.009 to −0.003), with equal recall at the review budgets. Not revisited, so the test stays untouched; the report states it | 31 October 2026 | `outputs/lemis_evaluation.json` |

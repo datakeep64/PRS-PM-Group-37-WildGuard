@@ -9,11 +9,6 @@
     ],
     "pass": true
   },
-  "top_records_for_review": {
-    "records": 50,
-    "file": "cites_top50_review.csv",
-    "pass_rule": "at least half in (a) and at most a fifth in (c), per reviewer"
-  },
   "confiscated_proxy": {
     "features_removed": [
       "source",
@@ -31,5 +26,14 @@
   "marine_mammal_non_us_importer": {
     "share_of_priority_records": 0.0758548380194291,
     "share_of_ranked_records": 0.003931310377027448
+  },
+  "top_records": {
+    "records": 50,
+    "file": "cites_top50_review.csv",
+    "classified_by": "the stated rule in validate_cites.classify, not by human reviewers",
+    "share_a_recognised_pattern": 0.62,
+    "share_b_us_law_abroad": 0.08,
+    "share_c_no_apparent_reason": 0.3,
+    "pass": false
   }
 }

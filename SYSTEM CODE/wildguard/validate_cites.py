@@ -14,7 +14,9 @@ independent evidence, not that it is accurate.
    the rule D records, including the source I records the ranking sets aside. Pass: the lower
    end of the 95% bootstrap interval of ROC-AUC for source I is above 0.5.
 3. Review of the top-ranked records: the 50 highest-ranked priority records, one per taxon,
-   exported for the two team members to classify independently (categories in C7).
+   put into C7's three categories by a stated rule (classify). Pass: at least half recognised
+   risk patterns, at most a fifth with no apparent reason. (C7 planned two human reviewers;
+   the rule replaced them, so no agreement between reviewers is reported.)
 
 Also reported, without a pass criterion: the share of priority flags on marine-mammal products
 traded between other countries (S6.3).
@@ -121,18 +123,45 @@ def check_confiscated_proxy(n_boot=1000):
             "pass": bool(lo > 0.5)}
 
 
-def top_for_review(n=50):
-    """The n highest-ranked priority records, one per taxon, with blank columns for the two
-    reviewers' categories: (a) recognised risk pattern, (b) a US legal regime carried abroad,
-    (c) no apparent reason."""
+# Check 3's categories (DESIGN_QUESTIONS C7), applied as a stated rule rather than by two reviewers
+WORKED_OR_HIGH_VALUE = {"ivory", "horn", "bone", "teeth_claws", "carvings_jewellery", "extracts_medicine"}
+UNCLEAR_SOURCE = {"O": "pre-Convention", "U": "unknown", "unknown": "not declared"}
+
+
+def classify(r):
+    """(category, the part of the rule that applied) for one top-ranked record. Every record is a
+    CITES record, so every taxon is listed."""
+    if r["warning"]:
+        return "b", "marine-mammal product traded between two other countries (US law)"
+    if r["product_group"] in WORKED_OR_HIGH_VALUE:
+        return "a", f"worked or high-value part ({r['product_group'].replace('_', ' ')})"
+    if r["purpose"] == "P" and r["appendix"] == "I":
+        return "a", "personal-purpose specimen of an Appendix I taxon"
+    if r["source"] in UNCLEAR_SOURCE:
+        return "a", f"source claimed as {UNCLEAR_SOURCE[r['source']]}"
+    if r["origin"] == "XX":
+        return "a", "unknown origin"
+    return "c", "none of the recognised patterns"
+
+
+def check_top_records(n=50):
+    """Check 3: the n highest-ranked priority records, one per taxon, classified by the rule.
+    Pass: at least half in (a), at most a fifth in (c); (b) is the jurisdiction effect."""
     q = pd.read_parquet(config.SAMPLES_DIR / "cites_review_queue.parquet")
     q = q[q["tier"] == "priority"].sort_values("score", ascending=False).drop_duplicates("taxon_display")
-    cols = ["year", "taxon_display", "product_code", "quantity_std", "unit_group", "purpose", "source",
-            "exporter", "importer", "appendix", "score", "reasons", "peer_context", "warning"]
-    out = q.head(n)[cols].assign(reviewer_1="", reviewer_2="")
-    out.to_csv(config.OUTPUTS_DIR / "cites_top50_review.csv", index=False)
+    out = q.head(n).reset_index(drop=True)
+    out[["category", "rule"]] = [classify(r) for _, r in out.iterrows()]
+    cols = ["year", "taxon_display", "product_code", "product_group", "quantity_std", "unit_group",
+            "purpose", "source", "origin", "exporter", "importer", "appendix", "score", "reasons",
+            "peer_context", "warning", "category", "rule"]
+    out[cols].to_csv(config.OUTPUTS_DIR / "cites_top50_review.csv", index=False)
+    share = out["category"].value_counts(normalize=True).reindex(["a", "b", "c"]).fillna(0)
     return {"records": int(len(out)), "file": "cites_top50_review.csv",
-            "pass_rule": "at least half in (a) and at most a fifth in (c), per reviewer"}
+            "classified_by": "the stated rule in validate_cites.classify, not by human reviewers",
+            "share_a_recognised_pattern": round(float(share["a"]), 3),
+            "share_b_us_law_abroad": round(float(share["b"]), 3),
+            "share_c_no_apparent_reason": round(float(share["c"]), 3),
+            "pass": bool(share["a"] >= 0.5 and share["c"] <= 0.2)}
 
 
 def make_figure():
@@ -182,7 +211,7 @@ def main():
                                  "appendix", "source"])
     out = {"unodc_consistency": check_unodc(S)}
     del S
-    out["top_records_for_review"] = top_for_review()
+    out["top_records"] = check_top_records()
     out["confiscated_proxy"] = check_confiscated_proxy()
     summary = json.loads((config.OUTPUTS_DIR / "cites_scoring_summary.json").read_text())
     out["marine_mammal_non_us_importer"] = {
