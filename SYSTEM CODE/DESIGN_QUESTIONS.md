@@ -367,11 +367,22 @@ imbalance handling to test.* RQ2.
   SMOTE-NC and the two ensemble versions need the `imbalanced-learn` package.
 
 **B4 Tuning, optimisation and the metric that decides.** *Decided* (31 October 2026). RQ2, RQ3.
-- **Search:** random search with the same budget per candidate (for example 20 configurations),
-  scored on the cross-validation folds of B1 (PSUPR Day 1b).
+- **Search:** five designed configurations per candidate, scored on the cross-validation folds of
+  B1 (changed on 31 October 2026 from a random search of 20, to keep the search to about an hour):
+  - configurations 1–4 compare the class-imbalance options of B3 at standard settings (for
+    XGBoost, the current pipeline's settings);
+  - configuration 5 changes the candidate's main setting (tree depth, number of trees, smoothing),
+    using the imbalance option that did best among 1–4; for logistic regression it swaps the
+    optimiser instead (below).
+
+  The settings are in `notebooks/model_selection.py` (`BASE`, `IMBALANCE`, `VARIANT`). Five
+  configurations explore less than twenty, so a candidate could lose for want of tuning; the
+  report says so.
 - **Optimisation, per model:**
-  - logistic regression: full-batch quasi-Newton (L-BFGS) and stochastic gradient descent (SGD on
-    the log loss, with a learning-rate schedule) are both in the search, with L2 regularisation.
+  - logistic regression: full-batch quasi-Newton (L-BFGS) in configurations 1–4, stochastic
+    gradient descent (SGD on the log loss, with a learning-rate schedule) in configuration 5, with
+    the same class-imbalance handling, so the two optimisers are compared like for like; L2
+    regularisation in both.
     This is the one candidate where the optimiser is a real choice; adaptive optimisers such as
     Adam matter for neural networks, which are not among the candidates (PRMLS Day 1b);
   - decision tree and random forest: greedy splits, no gradient;
@@ -617,6 +628,7 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 | B1 Year roles | 2000–2010 training with time-ordered cross-validation; 2011 selection; 2012 stack weights; 2013–2014 test once. Refit on 2000–2014 for deployment only if C4 shows performance falling with the gap | 31 October 2026 | Case counts per range (B1 table) |
 | B2 Supervised candidates | Logistic regression, naive Bayes, decision tree, random forest, AdaBoost, XGBoost. Out: linear SVM, MLP, kernel SVM, k-nearest neighbours | 31 October 2026 | Reasons in the B2 table |
 | B4 Deciding metric | PR-AUC on listed line items; recall at 1% and 5% reported | 31 October 2026 | Recall at 1% is capped near 0.42 by the case rate |
+| B4 Search size | Five designed configurations per candidate instead of a random search of 20 | 31 October 2026 | To keep the search to about an hour |
 | S3.1 DANN | Not pursued; future work | 31 October 2026 | No MLP baseline (B2) |
 | B3 Encodings and scaling | As listed in B3; imbalance handling still to test | 31 October 2026 | — |
 | B9 PCA, association rules | PCA once, to show the shift (C4); no association rules | 31 October 2026 | Reasons in B9 |

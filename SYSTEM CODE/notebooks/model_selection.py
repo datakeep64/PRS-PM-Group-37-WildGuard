@@ -6,7 +6,9 @@ The protocol:
       fold's training years; models fitted on a sample of the training shipments; selection on 2011
   B2  candidates: logistic regression, naive Bayes, decision tree, random forest, AdaBoost, XGBoost
   B3  each candidate's encoding and scaling; class-imbalance handling searched per candidate
-  B4  random search with the same budget per candidate; PR-AUC on listed line items decides
+  B4  five designed configurations per candidate (four class-imbalance options at standard
+      settings, then the main setting varied with the best of them); PR-AUC on listed line items
+      decides
   B5  each candidate's best configuration refitted on all of 2000-2010 and scored on 2011
 
 Every candidate starts from one shared representation (`Base`): categories as integer codes
@@ -35,7 +37,6 @@ from wildguard.models import XGB_PARAMS
 
 FOLDS = [((2000, 2006), (2007, 2008)), ((2000, 2008), (2009, 2010))]
 SAMPLE_FRAC = 0.2        # share of training shipments used to fit during the search (B1)
-N_CONFIGS = 20           # random-search budget per candidate (B4)
 RESAMPLE_RATIO = 0.1     # undersampling and SMOTE-NC target: one case per ten cleared items
 SIMPLICITY = ["logistic_regression", "naive_bayes", "decision_tree", "random_forest",
               "adaboost", "xgboost"]                     # tie order (B5)
@@ -138,37 +139,32 @@ class Identity:
 
 
 # ---------------------------------------------------------------- candidates and search spaces
-def _loguniform(rng, lo, hi):
-    return float(np.exp(rng.uniform(np.log(lo), np.log(hi))))
-
-
-def sample_config(name, rng):
-    """One random configuration of a candidate, including its class-imbalance handling (B3)."""
-    if name == "logistic_regression":
-        return {"imbalance": rng.choice(["none", "class_weight", "undersample", "smotenc"]),
-                "optimizer": rng.choice(["lbfgs", "sgd"]),
-                "C": _loguniform(rng, 1e-3, 10), "alpha": _loguniform(rng, 1e-7, 1e-3)}
-    if name == "naive_bayes":
-        return {"imbalance": rng.choice(["none", "class_weight", "undersample", "smotenc"]),
-                "smoothing": _loguniform(rng, 1e-2, 10)}
-    if name == "decision_tree":
-        return {"imbalance": rng.choice(["none", "class_weight", "undersample", "smotenc"]),
-                "max_depth": int(rng.integers(4, 21)), "min_samples_leaf": int(_loguniform(rng, 5, 2000))}
-    if name == "random_forest":
-        return {"imbalance": rng.choice(["none", "class_weight", "undersample", "smotenc", "balanced_rf"]),
-                "max_depth": int(rng.choice([12, 16, 20, 25, 30])),
-                "min_samples_leaf": int(_loguniform(rng, 1, 200)),
-                "max_features": rng.choice(["sqrt", "0.3", "0.5"])}
-    if name == "adaboost":
-        return {"imbalance": rng.choice(["none", "class_weight", "undersample", "smotenc", "rusboost"]),
-                "depth": int(rng.integers(1, 4)), "n_estimators": int(rng.choice([100, 200, 300])),
-                "learning_rate": _loguniform(rng, 0.05, 1.0)}
-    if name == "xgboost":
-        return {"imbalance": rng.choice(["none", "class_weight", "undersample", "smotenc"]),
-                "max_depth": int(rng.integers(4, 11)), "learning_rate": _loguniform(rng, 0.03, 0.2),
-                "subsample": float(rng.uniform(0.6, 1.0)), "colsample_bytree": float(rng.uniform(0.5, 1.0)),
-                "min_child_weight": _loguniform(rng, 1, 50)}
-    raise ValueError(name)
+# The designed search (B4, decided 31 October 2026). Per candidate, configurations 1-4 compare
+# the class-imbalance options at standard settings; configuration 5 changes the candidate's main
+# setting, using the imbalance option that did best among 1-4. For logistic regression the fifth
+# swaps the optimiser (L-BFGS to stochastic gradient descent), so that comparison is matched.
+BASE = {
+    "logistic_regression": {"optimizer": "lbfgs", "C": 1.0, "alpha": 1e-5},
+    "naive_bayes": {"smoothing": 1.0},
+    "decision_tree": {"max_depth": 10, "min_samples_leaf": 100},
+    "random_forest": {"max_depth": 20, "min_samples_leaf": 5, "max_features": "sqrt"},
+    "adaboost": {"depth": 2, "n_estimators": 200, "learning_rate": 0.5},
+    "xgboost": {"max_depth": 8, "learning_rate": 0.08, "subsample": 0.8, "colsample_bytree": 0.8,
+                "min_child_weight": 5.0},          # the current pipeline's settings
+}
+_STANDARD = ["none", "class_weight", "undersample", "smotenc"]
+IMBALANCE = {"logistic_regression": _STANDARD, "naive_bayes": _STANDARD, "decision_tree": _STANDARD,
+             "random_forest": ["none", "class_weight", "balanced_rf", "smotenc"],
+             "adaboost": ["none", "class_weight", "rusboost", "smotenc"],
+             "xgboost": _STANDARD}
+VARIANT = {
+    "logistic_regression": {"optimizer": "sgd"},
+    "naive_bayes": {"smoothing": 0.1},
+    "decision_tree": {"max_depth": 16, "min_samples_leaf": 20},
+    "random_forest": {"max_depth": 30, "min_samples_leaf": 1, "max_features": "0.3"},
+    "adaboost": {"depth": 3, "n_estimators": 300, "learning_rate": 0.3},
+    "xgboost": {"max_depth": 6, "learning_rate": 0.05, "min_child_weight": 20.0},
+}
 
 
 ENCODING = {"logistic_regression": OneHotZ, "naive_bayes": Binned, "decision_tree": Identity,
@@ -270,7 +266,7 @@ def prepare_fold(df, feats, tr_span, va_span, seed=37):
 
 
 def search(df, feats, candidates, seed=37, log=print, cache_dir=None):
-    """Random search per candidate over the two folds. Returns one row per (candidate, config).
+    """The designed search per candidate over the two folds. Returns one row per (candidate, config).
 
     With `cache_dir`, each candidate's results are saved as soon as it finishes
     (search_<candidate>.parquet) and read back instead of rerun, so an interrupted search
@@ -286,16 +282,21 @@ def search(df, feats, candidates, seed=37, log=print, cache_dir=None):
     log(f"folds ready: {[len(f['y_tr']) for f in folds]} training rows")
     for name in todo:
         rows = []
-        rng = np.random.default_rng(seed)
-        for i in range(N_CONFIGS):
-            cfg = sample_config(name, rng)
+        for i in range(5):
+            if i < 4:
+                cfg = {**BASE[name], "imbalance": IMBALANCE[name][i]}
+            else:
+                best_imb = max(rows, key=lambda r: r["pr_auc"])["imbalance"]
+                cfg = {**BASE[name], **VARIANT[name], "imbalance": best_imb}
             t, aps, bests = time.time(), [], []
             for f in folds:
                 s, best = fit_predict(name, cfg, f["base"], f["X_tr"], f["y_tr"], f["X_va"], seed,
                                       X_va=f["X_va"], y_va=f["y_va"])
                 aps.append(average_precision_score(f["y_va"], s))
                 bests.append(best)
-            rows.append({"candidate": name, "config": i, **{k: str(v) for k, v in cfg.items()},
+            rows.append({"candidate": name, "config": i + 1,
+                         "role": "imbalance option" if i < 4 else "main setting varied",
+                         **{k: str(v) for k, v in cfg.items()},
                          "pr_auc_fold1": aps[0], "pr_auc_fold2": aps[1], "pr_auc": float(np.mean(aps)),
                          "best_rounds": int(np.mean(bests)) if bests[0] is not None else None,
                          "seconds": time.time() - t})
