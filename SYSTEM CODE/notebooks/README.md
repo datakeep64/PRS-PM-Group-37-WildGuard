@@ -22,6 +22,8 @@ experiments will follow here as notebooks 06 onward.
 | [`07_us_overlap.ipynb`](07_us_overlap.ipynb) | Design question C5: whether LEMIS outcomes can be attached to the CITES records the US reported for the same 2013–14 imports, to give a labelled set in CITES's format (findings U1–U4: they cannot; most enforcement cases never reach CITES) |
 | [`08_peer_norms.ipynb`](08_peer_norms.ipynb) | Design question S2.1: whether CITES records should be described against peer norms learned from CITES or from LEMIS, tested on six held-out LEMIS populations evaluated on 2011 (findings N1–N3: LEMIS norms) |
 | [`09_consignment_features.ipynb`](09_consignment_features.ipynb) | Design question S2.2: whether features describing a record's consignment (LEMIS shipment, CITES export permit) mean the same in both datasets and help the model (findings K1–K4: only the number of distinct sources, narrowly) |
+| [`10_supervised_model.ipynb`](10_supervised_model.ipynb) | Design questions B2–B5: six supervised candidates compared under one protocol, with class-imbalance handling; results from `run_model_search.py` (findings T1–T6: XGBoost and random forest tied; XGBoost chosen) |
+| [`11_detectors_and_stack.ipynb`](11_detectors_and_stack.ipynb) | Design questions B6–B7: five unsupervised detectors and forward selection of the stack (findings H1–H7: XGBoost plus a random forest; no detector improves the score) |
 
 They read the raw downloads in `DATA/raw/` (see [`DATA/README.md`](../../DATA/README.md)). The first
 run copies them to Parquet in `DATA/processed/` (about 20 seconds); after that each notebook runs in

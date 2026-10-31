@@ -59,9 +59,9 @@ Learning Systems).
 | **0 · Select records** (new) | All LEMIS line items; all CITES animal records, both reporter types | LEMIS animals with a class; CITES rule D, Appendix `N` removed, source `I` / purpose `L` out of the ranking | — |
 | **1 · Align** | Codes mapped by name; `P`/`O`, `Y`/`N` and some countries unmapped; latest appendix | Full crosswalk; higher taxa one way; appendix in force; product groups by coding (done on branch `rework`) | — |
 | **2 · Features** | Peer norms per population; peer groups on the current product groups | Peer groups on the new product groups and higher taxa; CITES described against LEMIS norms (S2.1); permit ID carried, not a feature | feature selection (B8) |
-| **3 · Supervised** | XGBoost on all line items, chosen in advance | XGBoost chosen by comparison (B5): no class weights, depth 6, trained on animals with a class | — |
-| **4 · Unsupervised** | Peer deviation, Isolation Forest, K-Means, refitted on all CITES records | Refitted on rule D's records; detectors chosen by Part B | Part B |
-| **5 · Hybrid** | Meta-learner over all four signals, fitted on 2011–12, reused on CITES; reasons from the supervised model | One stacking layer; members chosen by Part B | S5.1 weights on CITES; S5.2 reasons |
+| **3 · Supervised** | XGBoost on all line items, chosen in advance | XGBoost (B5) and a 100-tree random forest (B6), no class weights, trained on animals with a class | — |
+| **4 · Unsupervised** | Peer deviation, Isolation Forest, K-Means, refitted on all CITES records | Not part of the score: no detector improved it (B7). The peer-deviation score is shown as context | — |
+| **5 · Combine** | Meta-learner over all four signals, fitted on 2011–12, reused on CITES; reasons from the supervised model | The average of the two models' percentile ranks (B6) | S5.2 reasons |
 | **6 · Rank and review** (new) | Line items, within each year | Within each year; tiers by budget | S6.1 review unit; S6.2 flag-card context; S6.3 US-specific taxa |
 
 ### Stage 0 · Select records (new)
@@ -178,19 +178,27 @@ Settled:
 
 Serves RQ4.
 
-Settled:
-- On CITES, the chosen detectors are refitted on rule D's records, which are also the reference
-  population for their percentile scales.
-- **Which detectors: Part B (B7).**
+Settled (B7, notebook 11, 31 October 2026):
+- No unsupervised detector improved the ranking once XGBoost and the random forest were in it, so
+  none is part of the score. Isolation Forest, K-Means, the Gaussian mixture and DBSCAN are
+  reported as tested and rejected (RQ4).
+- The peer-deviation score, the strongest detector on its own and the most transparent (how
+  unusual a record's quantity, route, purpose and source are for its peers), is shown on the flag
+  card as context, computed with the LEMIS norms (S2.1).
 
 ### Stage 5 · Hybrid and reasons
 
 Serves RQ4 and RQ3.
 
-Settled:
-- One stacking layer, whose members (supervised models and detectors) are chosen in Part B (B6).
+Settled (B6, notebook 11, 31 October 2026):
+- The score is the unweighted average of the percentile ranks of XGBoost and the random forest
+  (100 trees of depth 16). A fitted meta-learner was no better than the average.
+- Percentile ranks need a reference population. On CITES both models' scores are ranked within
+  each year (as the tiers are), averaged, and ranked again.
 
-**S5.1 Do the stack's weights hold on CITES?** *To test.* RQ4.
+**S5.1 Do the stack's weights hold on CITES?** *Moot* (31 October 2026): the score is a rank
+average with no fitted weights to reuse, and no detector is in it. The original question, for the
+record:
 - Why open: the weights are fitted on LEMIS (currently supervised 0.85, Isolation Forest 1.18,
   peer deviation 0.36, K-Means 0.01). On CITES the detectors and their percentile scales are
   refitted (`score_cites.py`), but the weights are reused, so a percentile may not mean what it
@@ -201,18 +209,15 @@ Settled:
 - Draft rule: the stack is used on CITES only if the reused weights are no worse than its
   supervised part alone on the target.
 
-**S5.2 Reasons cover only the supervised part.** *Choice.* RQ3.
-- Why open: a flag's plain-language reasons come from the supervised model's TreeSHAP
-  contributions (report §4.6). The hybrid score also depends on the detectors, and the Isolation
-  Forest currently carries the largest weight. A record ranked high mainly as an anomaly gets
-  reasons that do not say so. The flag card shows the four signals, but not how much each moved
-  the score.
-- Options: show each member's share of the score (exact if the meta-learner is a logistic
-  regression: weight × input); add a reason for the strongest detector signal, worded from the
-  deviation features (for example, quantity against the peer median); or keep reasons as they are
-  and say in the report that they explain the supervised part only.
-- If Part B chooses a supervised model without TreeSHAP (for example logistic regression), the
-  reasons come from its coefficients instead.
+**S5.2 Where the reasons come from.** *Choice.* RQ3.
+- Why open: the plain-language reasons come from XGBoost's TreeSHAP contributions (report §4.6),
+  but the score is now the average of XGBoost's and the random forest's ranks (B6). Reasons from
+  XGBoost alone explain half of the score.
+- Options: (a) keep XGBoost's contributions as the reasons, and say in the report that they
+  explain one of the two models; (b) add the forest's contributions through TreeSHAP for
+  scikit-learn forests (the `shap` package), averaging the two models' contributions per
+  feature; (c) as (a), with the peer-deviation context (stage 4) shown beside the reasons, so the
+  reviewer also sees how unusual the record is for its peers.
 
 ### Stage 6 · Rank and review (new)
 
@@ -263,12 +268,12 @@ decided. Brackets mark wording that depends on a decision.
    the CITES listing in force at the time of the shipment.
 3. **Features.** Deviation from the peer norms of LEMIS's training years:
    quantity against peers, route rarity, unusual purpose or source [, consignment make-up].
-4. **Supervised.** XGBoost, chosen from six candidates, learns from LEMIS outcomes: refused, seized,
-   abandoned or re-exported vs cleared.
-5. **Unsupervised.** Label-free anomaly scores [from the detectors chosen in Part B], refitted on
-   the CITES records being scored.
-6. **Hybrid.** A meta-learner combines [the chosen members] into one risk score, with reasons
-   [covering every signal].
+4. **Supervised.** Two models, chosen from six candidates, learn from LEMIS outcomes (refused,
+   seized, abandoned or re-exported vs cleared): XGBoost (boosting) and a random forest (bagging).
+5. **Unsupervised.** A peer-deviation score shows how unusual a record is for its peers. It is
+   context for the reviewer, not part of the score: no unsupervised detector improved the ranking.
+6. **Combine.** The risk score is the average of the two models' percentile ranks, with reasons
+   [from S5.2].
 7. **Rank.** Records [or permits] are ranked within each year into review tiers by inspection
    budget.
 
@@ -420,7 +425,13 @@ record:
 - The comparison table of all candidates is reported (RQ2): it shows what pattern recognition adds
   over simpler methods.
 
-**B6 Building the stack.** *To test.* RQ4.
+**B6 Building the stack.** *Decided* (31 October 2026, notebook 11): XGBoost and a random forest
+(100 trees, depth 16), combined by the average of their percentile ranks. RQ4. Forward selection
+added the random forest (+0.0098 PR-AUC with the 200-tree forest of B5) and then stopped: no
+detector and no other model improved the stack. The meta-learner and the rank average tied, so
+the average is kept. The forest was then reduced to 100 trees of depth 16 for the hosted app
+(27 MB instead of 96 MB); the ensemble still gains +0.006 (interval +0.003 to +0.010). The plan,
+for the record:
 - **One stacking layer.** Its pool holds the tuned supervised candidates and the detectors of B7.
   This replaces the current fixed stack of one supervised model and three detectors.
 - **Error correlation first.** For the strongest candidates, report how correlated their errors
@@ -430,12 +441,20 @@ record:
 - **Forward selection.** Start from the B5 choice. Add the pool member that most improves the B4
   metric on 2011. Stop when the best addition's gain lies inside its bootstrap interval. This is
   the answer to "how many models": as many as keep helping, usually few. During selection the
-  members are combined by averaging their score ranks; the final weights are fitted on 2012.
+  members are combined by the logistic meta-learner over the logit of each member's percentile
+  rank, cross-fitted on 2011 by halves of the shipments; the final weights are fitted on 2012.
+  (Changed on 31 October 2026, before any stack result: the plan was to average ranks during
+  selection, but an unweighted average gives a weak detector XGBoost's weight, so no detector
+  could ever enter. Averaging is still compared at the end, below.)
 - **How the members are combined:** a logistic-regression meta-learner (stacking) against simple
   rank averaging (unweighted voting, PRMLS Day 5). Averaging is kept if it ties. The logistic
   meta-learner gives exact per-member contributions, which S5.2 can use.
 
-**B7 Unsupervised candidates.** *To test.* RQ4.
+**B7 Unsupervised candidates.** *Decided* (31 October 2026, notebook 11): none is part of the
+score; the peer-deviation score is shown as context. RQ4. Alone, every detector ranks enforcement
+cases above random (peer deviation 0.151, Isolation Forest 0.111, DBSCAN 0.094, Gaussian mixture
+0.086, K-Means 0.038; random 0.024), but none improves the supervised ensemble. The plan, for the
+record:
 
 | Candidate | In or out | Reason |
 |---|---|---|
@@ -621,7 +640,8 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 4. **S2.1** (whose peer norms), then **S2.2** (consignment features). *Both done: LEMIS norms (notebook 08); `cons_sources` adopted (notebook 09).*
 5. **Part B experiments:** B3 imbalance handling and B4 tuning → B5 supervised choice → B7
    detectors → B6 stack → B8 features.
-6. **Transfer and review:** S5.1, C6, S6.1; then the choices S5.2, S6.2, S6.3.
+6. **Transfer and review:** C6, S6.1; then the choices S5.2, S6.2, S6.3. (S5.1 is moot: B6 chose
+   a rank average with no weights.)
 7. **B10:** final fit, transfer check, the one test. Rerun notebooks 04 and 05 on the rebuilt
    features.
 8. **Report:** the flow diagram and §4 from Parts A and B and the decisions; §6 from Part C.
@@ -653,3 +673,6 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 | S2.1 Peer norms on CITES | LEMIS training-year norms | 31 October 2026 | notebook 08, N1–N3: target norms significantly worse on 2 of 6 held-out populations |
 | S2.2 Consignment features | `cons_sources` (distinct sources in the shipment or permit) | 31 October 2026 | notebook 09, K1–K4: +0.002 PR-AUC, interval just above zero |
 | B5 Supervised model | XGBoost, configuration 5 (no imbalance handling, depth 6, learning rate 0.05) | 31 October 2026 | notebook 10, T1–T6: tied with random forest (0.565 vs 0.570); tie broken on deployment cost after the result was seen, not by the written rule |
+| B6 Stack | XGBoost + random forest (100 trees, depth 16), average of percentile ranks | 31 October 2026 | notebook 11, H3–H7: forest adds +0.006 at this size (27 MB); size chosen for the hosted app |
+| B7 Detectors | None in the score; peer-deviation score shown as context | 31 October 2026 | notebook 11, H2–H3: no detector improves the ensemble |
+| S5.1 Stack weights on CITES | Moot: no fitted weights | 31 October 2026 | B6 |
