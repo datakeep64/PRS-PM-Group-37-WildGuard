@@ -1,13 +1,16 @@
-"""WildGuard - wildlife-trade risk screening (MVP).
+"""WildGuard - wildlife-trade risk screening.
 
     streamlit run "SYSTEM CODE/app/app.py"
 
+Each page answers one question. It leads with a plain answer and a comparison, and keeps the
+measurement detail one click below, in expanders.
+
 Pages
-    Overview          what the system does, headline results, caveats, the two source datasets
-    Review queue      CITES records ranked for human review, each with plain-language reasons
-    Check a shipment  score one record (CITES-style, or a US import declaration with value)
-    Does it work?     triage simulation on held-out LEMIS years with real enforcement outcomes
-    Risk patterns     where flagged CITES trade concentrates; consistency with UNODC data
+    Overview        what the system does, its headline results, what a flag means, the data
+    Review queue    CITES export permits ranked within each year, with a flag card per permit
+    Check a record  rank one trade record, or a US import declaration, and see why
+    Does it work?   the one test on held-out LEMIS years, against real enforcement outcomes
+    What it flags   where flags concentrate in CITES, and three checks against outside evidence
 """
 import json
 import sys
@@ -17,6 +20,7 @@ import joblib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import pyarrow.parquet as pq
 import streamlit as st
 
 CODE_DIR = Path(__file__).resolve().parents[1]
@@ -50,14 +54,16 @@ if last_run().get("stamp") != stamp:
     last_run()["stamp"] = stamp
 
 from wildguard import config  # noqa: E402
-from wildguard.explain import COUNTRY, PURPOSE, SOURCE, explain_rows  # noqa: E402
-from wildguard.features import to_model_matrix  # noqa: E402
+from wildguard.explain import (COUNTRY, PORT, PURPOSE, SOURCE, explain_rows,  # noqa: E402
+                               peer_context, us_law_warning)
+from wildguard.models import SCALE_GRID, PeerDeviationScorer  # noqa: E402
 from wildguard.schema_alignment import region  # noqa: E402
 
 # "ranger station" palette, matching .streamlit/config.toml: forest green, trail-blaze orange,
 # slate, stone; khaki page, olive-drab sidebar, cream lettering
 GREEN, BLAZE, SLATE, GREY = "#3E5C2E", "#B5652B", "#5B7F95", "#8C8270"
 KHAKI, OLIVE, CREAM = "#E3DAC2", "#4A5A3A", "#EFE6CC"
+PASS, FAIL = "#2E7D32", "#C62828"
 st.set_page_config(page_title="WildGuard", page_icon="🐘", layout="wide",
                    initial_sidebar_state="expanded")
 # slab-serif headings like routed park signs; olive-drab sidebar with cream text
@@ -76,21 +82,43 @@ h1, h2, h3, h4, h5, [data-testid="stMetricValue"], .wg-sign {{
     background-color: {BLAZE} !important; }}
 [data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) > div:first-child > div {{
     background-color: {CREAM} !important; }}
+.wg-step {{ background: rgba(255, 255, 255, 0.35); border-radius: 10px; padding: 10px 12px;
+    min-height: 12.5rem; font-size: 0.88rem; line-height: 1.35; }}
+.wg-step b {{ font-family: 'Roboto Slab', Georgia, serif; }}
 </style>""", unsafe_allow_html=True)
 
 TIER_STYLE = {"priority": ("#d03b3b", "Priority review"), "review": ("#fab219", "Review"),
-              "routine": ("#0ca30c", "Routine"), "auto-clear": ("#0ca30c", "Auto-clear")}
+              "routine": ("#0ca30c", "Routine")}
+TIER_CHOICES = {"priority": "Priority · top 1% of each year",
+                "review": "Review · next 4% (sample)", "routine": "Routine · the rest (sample)"}
+PRODUCT_LABELS = {"live_eggs": "live eggs", "skin_pieces": "skin pieces",
+                  "leather_products": "leather products", "coral_raw": "raw coral",
+                  "teeth_claws": "teeth and claws", "extracts_medicine": "extracts and medicine",
+                  "carvings_jewellery": "carvings and jewellery", "body_parts": "body parts"}
 PRODUCT_GROUPS = ["live", "live_eggs", "bodies", "trophies", "skins", "skin_pieces",
-                  "leather_products", "garments", "cloth", "specimens",
-                  "meat", "caviar", "ivory", "horn", "bone", "skulls", "teeth_claws",
-                  "coral_raw", "shells", "scales", "feathers", "eggs", "hair",
-                  "fins", "extracts_medicine", "carvings_jewellery", "body_parts", "other"]
+                  "leather_products", "garments", "cloth", "specimens", "meat", "caviar", "ivory",
+                  "horn", "bone", "skulls", "teeth_claws", "coral_raw", "shells", "scales",
+                  "feathers", "eggs", "hair", "fins", "extracts_medicine", "carvings_jewellery",
+                  "body_parts", "other"]
+UNITS = ["count", "kg", "litre", "m2", "m3", "m"]
+APPENDIX_LABELS = {"I": "Appendix I", "II": "Appendix II", "III": "Appendix III",
+                   "not_listed": "not listed"}
 CLASS_ICON = {"Reptilia": "🦎", "Mammalia": "🐘", "Aves": "🦜", "Anthozoa": "🪸",
               "Actinopteri": "🐟", "Amphibia": "🐸", "Bivalvia": "🐚", "Gastropoda": "🐌",
               "Insecta": "🦋", "Elasmobranchii": "🦈", "Hydrozoa": "🪼", "Arachnida": "🕷️",
               "Holothuroidea": "🥒", "Hirudinoidea": "🪱"}
 CLASSES = ["Reptilia", "Mammalia", "Aves", "Anthozoa", "Actinopteri", "Amphibia", "Bivalvia",
            "Gastropoda", "Insecta", "Elasmobranchii", "Hydrozoa", "Arachnida"]
+# the models and baselines of the one test, in the order they are shown
+MODEL_NAMES = {"ensemble": "WildGuard (XGBoost + random forest)",
+               "xgboost": "XGBoost alone", "random_forest": "Random forest alone",
+               "logistic_regression": "Logistic regression",
+               "full_ensemble": "WildGuard + US-only fields (value, port, month)",
+               "baseline:listing_rule": "Listing rule (most endangered, wild first)",
+               "baseline:random": "Random inspection"}
+SUBSETS = {"listed": "Species listed in CITES (closest to CITES trade)",
+           "all": "All imports", "commercial": "Commercial imports",
+           "listed_commercial": "Commercial imports of listed species"}
 # column help for the CITES preview (LEMIS's comes from its own codebook, DATA/reference)
 CITES_FIELDS = {
     "Id": "Unique record identifier, unchanged across releases",
@@ -122,12 +150,12 @@ def load_json(path):
     return json.loads(p.read_text()) if p.exists() else None
 
 
-QUEUE_COLS = ["year", "class", "taxon_display", "product_code", "quantity_std", "unit_group",
-              "purpose", "source", "origin", "exporter", "importer", "appendix", "reporter_type",
-              "risk_percentile", "tier", "reasons", "score_supervised", "score_peer",
-              "score_iforest", "score_kmeans", "score_hybrid"]
-EVAL_COLS = ["purpose", "label", "transfer:hybrid", "full:hybrid", "baseline:listing_rule",
-             "baseline:random"]
+QUEUE_COLS = ["year", "class", "order_name", "family", "genus", "taxon_display", "product_code",
+              "unit_group", "quantity_std", "purpose", "source", "origin", "exporter",
+              "importer", "appendix", "reporter_type", "export_permit", "consignment",
+              "consignment_score", "score", "score_xgboost", "score_random_forest",
+              "peer_deviation", "tier", "reasons", "peer_context", "warning"]
+TEST_MODELS = list(MODEL_NAMES)
 
 
 def _compact(df, keep_text=()):
@@ -138,7 +166,7 @@ def _compact(df, keep_text=()):
     return df
 
 
-# The two large tables are read-only, so they are cached once as shared resources rather than
+# The large tables are read-only, so they are cached once as shared resources rather than
 # copied per session (st.cache_data returns a fresh copy on every call).
 @st.cache_resource
 def load_queue():
@@ -148,9 +176,56 @@ def load_queue():
 
 
 @st.cache_resource
-def load_test_scores():
+def load_permits():
+    """The review queue as permits: one row per export permit within a year (a record without a
+    permit stands alone), described by its highest-scoring record, which sets the permit's
+    score. Returns (permits, each queue record's permit number)."""
+    q, scale = load_queue(), load_json(config.OUTPUTS_DIR / "cites_record_scale.json")
+    if q is None or scale is None:
+        return None, None
+    gid = q.groupby(["year", "consignment"], observed=True, sort=False).ngroup().to_numpy()
+    top_row = pd.Series(q["score"].to_numpy()).groupby(gid).idxmax().to_numpy()
+    P = q.iloc[top_row].reset_index(drop=True)
+    P["gid"], P["row"], P["records"] = np.arange(len(P)), top_row, np.bincount(gid)
+    P["taxa"] = pd.Series(q["taxon_display"].cat.codes.to_numpy()).groupby(gid).nunique().to_numpy()
+    P["both_reports"] = pd.Series(q["reporter_type"].cat.codes.to_numpy()).groupby(gid).nunique().to_numpy() > 1
+    P["any_warning"] = pd.Series((q["warning"] != "").to_numpy()).groupby(gid).any().to_numpy()
+    # rank within the year: exact for priority permits (all of them are in the queue), placed
+    # on the year's permit-score scale for the sampled lower tiers, and kept inside its tier
+    n = P["year"].map(lambda y: scale[str(y)]["permits"]).to_numpy()
+    est = np.ones(len(P))
+    for y, idx in P.groupby("year").indices.items():
+        s = scale[str(y)]
+        est[idx] = 1 - np.interp(P["consignment_score"].to_numpy()[idx], s["permit_score"], SCALE_GRID)
+    exact = P[P["tier"] == "priority"].groupby("year")["consignment_score"].rank(
+        ascending=False, method="first")
+    rank = np.maximum(np.round(est * n), 1)
+    lo = np.where(P["tier"] == "review", np.floor(0.01 * n) + 1, np.floor(0.05 * n) + 1)
+    hi = np.where(P["tier"] == "review", np.floor(0.05 * n), n)
+    rank = np.clip(rank, lo, hi)
+    rank[exact.index.to_numpy()] = exact.to_numpy()
+    P["rank"], P["permits_in_year"] = rank.astype(int), n
+    P["top"] = P["rank"] / n
+    P["taxon_label"] = [f"{CLASS_ICON.get(c, '🌿')} {t}" + (f" +{k - 1}" if k > 1 else "")
+                        for c, t, k in zip(P["class"], P["taxon_display"], P["taxa"])]
+    P["route"] = P["exporter"].astype(str) + " → " + P["importer"].astype(str)
+    return P, gid
+
+
+@st.cache_resource
+def load_test_shipments():
+    """The one test's line items (LEMIS 2013-2014) as shipments, for each held-out set: a
+    shipment's score is its highest line score, and it is a case if any line is (C2)."""
     p = config.OUTPUTS_DIR / "lemis_test_scores.parquet"
-    return _compact(pd.read_parquet(p, columns=EVAL_COLS)) if p.exists() else None
+    if not p.exists():
+        return None
+    t = pq.read_table(p, columns=["shipment_id", "sp_listed", "purpose", "label"] + TEST_MODELS,
+                      read_dictionary=["shipment_id", "purpose"]).to_pandas()
+    masks = {"all": np.ones(len(t), bool), "listed": t["sp_listed"].to_numpy(),
+             "commercial": (t["purpose"] == "T").to_numpy()}
+    masks["listed_commercial"] = masks["listed"] & masks["commercial"]
+    return {k: t[m].groupby("shipment_id", observed=True)[["label"] + TEST_MODELS].max()
+            .reset_index(drop=True) for k, m in masks.items()}
 
 
 @st.cache_data
@@ -172,12 +247,27 @@ def lemis_fields():
     return dict(pd.read_csv(p).values) if p.exists() else {}
 
 
-@st.cache_resource
-def load_model(name):
-    p = config.MODELS_DIR / name
-    return joblib.load(p) if p.exists() else None
+# The two ensembles hold 130-240 MB each once loaded, so only the one in use is kept.
+@st.cache_resource(max_entries=1)
+def load_scorer(kind):
+    """(ensemble, feature builder): the CITES model, or the full model for US declarations."""
+    ens, fb = {"cites": ("cites_ensemble.joblib", "feature_builder_cites.joblib"),
+               "full": ("full_ensemble.joblib", "feature_builder_lemis.joblib")}[kind]
+    paths = [config.MODELS_DIR / ens, config.MODELS_DIR / fb]
+    return tuple(joblib.load(p) for p in paths) if all(p.exists() for p in paths) else None
 
 
+@st.cache_data
+def genus_taxonomy():
+    """Order and family of each genus in the queue, for the US-law warning on a checked record."""
+    q = load_queue()
+    if q is None:
+        return {}
+    g = q[["genus", "order_name", "family"]].astype(str).drop_duplicates("genus")
+    return {r.genus: (r.order_name, r.family) for r in g.itertuples()}
+
+
+# ----------------------------------------------------------------------------- helpers
 def plotly_layout(fig, height=360, **kw):
     fig.update_layout(height=height, margin=dict(l=10, r=10, t=40, b=10),
                       plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
@@ -195,12 +285,32 @@ def tier_badge(tier):
             f"font-weight:600;font-size:0.9rem'>● {label}</span>")
 
 
+def check_badge(passed):
+    color, label = (PASS, "PASS") if passed else (FAIL, "FAIL")
+    return (f"<span style='background:{color};color:#fff;padding:2px 9px;border-radius:10px;"
+            f"font-weight:700;font-size:0.8rem;letter-spacing:0.05em'>{label}</span>")
+
+
+def top_text(share):
+    """'top 0.37%': the share of the population ranked at or above, rounded up so it stays true."""
+    pct = share * 100
+    if pct < 1:
+        return f"top {max(np.ceil(pct * 100) / 100, 0.01):.2f}%"
+    if pct < 10:
+        return f"top {np.ceil(pct * 10) / 10:.1f}%"
+    return f"top {min(np.ceil(pct), 100):.0f}%"
+
+
 def cname(code):
     return f"{COUNTRY.get(code, code)} ({code})"
 
 
 def with_icon(cls):
     return f"{CLASS_ICON.get(cls, '🌿')} {cls}" if isinstance(cls, str) else "🌿"
+
+
+def product_label(group):
+    return PRODUCT_LABELS.get(group, str(group).replace("_", " "))
 
 
 def prob(p):
@@ -212,6 +322,61 @@ def need(obj, what):
     if obj is None:
         st.warning(f"{what} not found - run the pipeline first: `bash \"SYSTEM CODE/run_pipeline.sh\"`")
         st.stop()
+
+
+def go_to(page):
+    st.session_state["nav"] = page
+
+
+# ------------------------------------------------------------------------- flag card
+def flag_card(r, rank_line, reasons, peer, warning, flagged):
+    """The flag card shared by the review queue and Check a record: what the record is, why it
+    ranks where it does, how unusual it is for its peers, and any warning."""
+    st.markdown(f"{tier_badge(r['tier'])} &nbsp; <b>{rank_line}</b>", unsafe_allow_html=True)
+    x = float(r["quantity_std"])
+    qty = f"{x:,.0f}" if x.is_integer() or x >= 1000 else f"{x:,.4g}"
+    amount = f"{qty} {r['product']}" if r["unit_group"] == "count" else \
+        f"{qty} {r['unit_group']} of {r['product']}"
+    where = f"{cname(r['exporter'])} → {cname(r['importer'])}"
+    if r["origin"] != r["exporter"]:
+        where += f" · origin {cname(r['origin'])}"
+    tail = [f"{r['year']}"] if r.get("year") else []
+    if r.get("reporter_type") in ("E", "I"):
+        tail.append(f"reported by the {'importer' if r['reporter_type'] == 'I' else 'exporter'}")
+    st.markdown(
+        f"#### {CLASS_ICON.get(r['class'], '🌿')} {r['taxon_display'] or 'unnamed taxon'}\n"
+        f"**{amount}** · source **{SOURCE.get(r['source'], r['source'])}** · purpose "
+        f"**{PURPOSE.get(r['purpose'], r['purpose'])}** · "
+        f"{APPENDIX_LABELS.get(r['appendix'], 'CITES ' + str(r['appendix']))}  \n"
+        f"{where}" + (" · " + " · ".join(tail) if tail else ""))
+
+    st.markdown("**Why flagged**" if flagged else "**What raised its score**")
+    for reason in reasons or ["No single field raised its score."]:
+        st.markdown(f"- {reason}")
+    st.caption("What pushed the score up most, according to XGBoost, one of the two models. "
+               "Shares and peer norms are those of US imports, 2000–2014, which the models "
+               "learned from.")
+
+    st.markdown("**How unusual for its peers**")
+    if peer:
+        for part in str(peer).split(", "):
+            st.markdown(f"- {part}")
+    else:
+        st.markdown("Nothing stands out against its peers: the score comes from the patterns the "
+                    "models learned from US enforcement outcomes.")
+    st.caption("Peers: US imports of the same genus, product and unit. This is context for the "
+               "reviewer; it is not part of the score.")
+    if warning:
+        st.warning(f"**Warning.** {warning}", icon="⚠️")
+
+
+def member_lines(score, pct_x, pct_rf, p_x, peer_dev, population):
+    return [f"Score {score:.4f}: the average of the two models' percentiles among {population}.",
+            f"XGBoost: percentile {pct_x:.2%}. Its probability for a US import like this: "
+            f"{prob(p_x)}. That is a US-conditions estimate, not a probability for this record.",
+            f"Random forest: percentile {pct_rf:.2%}.",
+            f"Peer-deviation score {peer_dev:.2f} (0 = typical for its peers, 1 = as unusual "
+            "as the measure allows)."]
 
 
 # ------------------------------------------------------------------------------- pages
@@ -228,53 +393,71 @@ def page_overview():
         "<div aria-hidden='true' style='font-size:1.7rem;letter-spacing:0.55rem;margin-top:16px;"
         f"filter:brightness(0) invert(92%) sepia(25%);opacity:0.6'>{animals}</div></div>",
         unsafe_allow_html=True)
-    st.markdown(
-        "Customs and CITES authorities cannot inspect every wildlife shipment. WildGuard learns "
-        "what historically *preceded enforcement action* from **5.5 million US import "
-        "declarations with real outcomes (LEMIS)**, and uses those patterns, together with "
-        "label-free anomaly detection, to rank **global CITES trade records** for human review.")
     ev, cs = load_json(config.OUTPUTS_DIR / "lemis_evaluation.json"), load_json(
         config.OUTPUTS_DIR / "cites_scoring_summary.json")
     need(ev, "Evaluation results")
-    m = ev["metrics_test"]["transfer:hybrid"]
+    (y0, y1) = cs["years"] if cs else (2015, 2024)
+    st.markdown(
+        "Customs and CITES authorities cannot inspect every wildlife shipment. WildGuard learns "
+        "what came before enforcement action from **US wildlife import declarations, 2000–2014, "
+        "with what officers did about each (LEMIS)**, and uses those patterns to rank **CITES "
+        f"export permits from {y0}–{y1}** so reviewers can look at the riskiest first.")
+    m = ev["metrics_test"]["listed:shipments"]
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Cases caught at 5% inspection", f"{m['recall@5%']:.0%}")
-    c1.caption("random inspection: 5%")
-    c2.metric("Real cases among top-1% flags", f"{m['precision@1%']:.0%}")
-    c2.caption(f"base rate: {m['base_rate']:.1%}")
+    c1.metric("Cases found at a 5% budget", f"{m['ensemble']['recall@5%']:.0%}",
+              help="Share of shipments with an enforcement case that are among the 5% of "
+                   "shipments WildGuard ranks highest.")
+    c1.caption(f"random inspection: 5% · listing rule: {m['baseline:listing_rule']['recall@5%']:.0%}")
+    c2.metric("Real cases in the top 1%", f"{m['ensemble']['precision@1%']:.0%}",
+              help="Of the 1% of shipments ranked highest, the share that had an enforcement case.")
+    c2.caption(f"across all shipments: {m['ensemble']['base_rate']:.1%}")
     if cs:
-        c3.metric("CITES records scored", f"{cs['records_scored'] / 1e6:.2f}M")
-        c3.caption(f"animal trade {cs['years'][0]}-{cs['years'][1]}")
-        c4.metric("Priority flags", f"{cs['priority_records']:,}")
-        c4.caption("top 1% per year, for human review")
-    st.caption("Held-out evaluation on LEMIS 2013-2014 (never used for training or tuning).")
+        c3.metric("CITES permits ranked", f"{cs['consignments'] / 1e6:.2f} M")
+        c3.caption(f"{cs['records_ranked'] / 1e6:.2f} M records, {y0}–{y1}")
+        c4.metric("Priority permits", f"{sum(cs['priority_consignments_per_year'].values()):,}")
+        c4.caption("top 1% of each year's permits")
+    st.caption("The first two numbers come from the one test: US imports of CITES-listed species "
+               "in 2013–2014, years the models never saw, counted per shipment.")
+
+    st.subheader("What a flag means")
+    st.info(
+        "A flag means a permit's records **resemble trade that US officers stopped** (refused, "
+        "seized, abandoned or re-exported) in 2000–2014. It is a prompt for a reviewer's limited "
+        "time, **not evidence that a law was broken**: CITES records permitted trade, and most "
+        "flagged permits will be lawful. Most stopped US shipments never appear in CITES at all, "
+        "so a flag says a record looks like stopped trade, not that it was stopped. Some signals "
+        "exist only in CITES, such as the two countries' reports of a permit disagreeing; they "
+        "cannot be learned from US outcomes, so the flag card shows them as context.")
 
     st.subheader("How it works")
     steps = [
-        ("1 · Align", "Knowledge modelling", "Map LEMIS ↔ CITES codes: product forms, units, "
-                                             "source/purpose codes, countries."),
-        ("2 · Features", "Feature engineering", "Deviation from peer norms: quantity vs peers, "
-                                                "route rarity, unusual purpose/source."),
-        ("3 · Supervised", "XGBoost ensemble", "Learns from LEMIS outcomes: refused / seized / "
-                                               "abandoned / re-exported vs cleared."),
-        ("4 · Unsupervised", "Peer z-score · Isolation Forest · K-Means",
-         "Label-free anomaly scores, re-fitted on CITES itself."),
-        ("5 · Hybrid", "Stacked meta-learner", "Combines all four signals into one risk score "
-                                               "and review tier, with reasons."),
+        ("1 · Select", "Records", "Learn from LEMIS animal imports; rank each CITES trade once."),
+        ("2 · Align", "Knowledge modelling", "One code list for products, units, purposes, "
+                                             "sources, countries, taxa and CITES listings."),
+        ("3 · Features", "Feature engineering", "How each record departs from its peers in US "
+                                                "trade: quantity, route, purpose, source."),
+        ("4 · Learn", "XGBoost + random forest", "Two models, chosen from six, learn from US "
+                                                 "enforcement outcomes."),
+        ("5 · Context", "Peer deviation", "How unusual a record is for its peers: shown to the "
+                                          "reviewer, not scored."),
+        ("6 · Combine", "Rank averaging", "Score = average of the two models' ranks; reasons "
+                                          "from XGBoost."),
+        ("7 · Rank", "Review queue", "Permits ranked within each year: priority = top 1%, "
+                                     "review = next 4%."),
     ]
-    cols = st.columns(5)
-    for col, (t, tech, desc) in zip(cols, steps):
-        col.markdown(f"**{t}**  \n<span style='color:{BLAZE};font-size:0.8rem;font-weight:600'>"
-                     f"{tech.upper()}</span>  \n{desc}", unsafe_allow_html=True)
+    for col, (t, tech, desc) in zip(st.columns(len(steps)), steps):
+        col.markdown(f"<div class='wg-step'><b>{t}</b><br><span style='color:{BLAZE};"
+                     f"font-size:0.72rem;font-weight:700'>{tech.upper()}</span><br>{desc}</div>",
+                     unsafe_allow_html=True)
 
-    st.subheader("What a flag means - and does not mean")
-    st.info(
-        "A flag means *this record's pattern resembles shipments that historically drew "
-        "enforcement action, or deviates sharply from normal trade for its species* - i.e. it "
-        "is worth an analyst's limited attention. It is **not** evidence that a law was broken. "
-        "LEMIS reflects US enforcement; CITES is global, mostly permitted trade, so absolute "
-        "probabilities do not transfer - the system ranks CITES records by inspection budget "
-        "instead.")
+    st.subheader("Where to go next")
+    a, b, c, d = st.columns(4)
+    a.button("Open the review queue", on_click=go_to, args=("Review queue",), type="primary",
+             use_container_width=True)
+    b.button("Check a record", on_click=go_to, args=("Check a record",), use_container_width=True)
+    c.button("See how it was tested", on_click=go_to, args=("Does it work?",),
+             use_container_width=True)
+    d.button("See what it flags", on_click=go_to, args=("What it flags",), use_container_width=True)
 
     ds = load_json(config.DATASETS_JSON)
     if not ds:
@@ -283,172 +466,232 @@ def page_overview():
     # release updates this section; the table mirrors section 3.1 of the final report
     le, ci = ds["lemis"], ds["cites"]
     (s0, s1), (t0, t1) = ci["scored_years"], (config.TEST_YEARS[0], config.TEST_YEARS[-1])
-    st.subheader("The data")
-    st.markdown(
-        "| | LEMIS (US Fish & Wildlife Service) | CITES Trade Database |\n|---|---|---|\n"
-        "| Content | Every wildlife import declared to USFWS | Trade in CITES-listed species, "
-        "reported by all Parties |\n"
-        f"| Version | [Zenodo record {le['record']}](https://doi.org/{le['doi']}), v{le['version']} "
-        f"(published {le['published']}) | Full download v{ci['version']} (UNEP-WCMC)"
-        + (f", extracted {ci['extracted']}" if ci["extracted"] else "") + " |\n"
-        f"| Size | {le['line_items']:,} import line items in {le['shipments']:,} shipments | "
-        f"{ci['records']:,} records ({ci['years'][0]}–{ci['years'][1]}) |\n"
-        f"| Period used | {le['years'][0]}–{le['years'][1]} (all) | Animal records {s0}–{s1} for "
-        f"scoring ({ci['animal_records_scored']:,}); {t0}–{t1} US-reported records for the "
-        "alignment check |\n"
-        "| Labels | `action` (Cleared/Refused), `disposition` (Cleared/Seized/Abandoned/"
-        "Re-exported) | none |\n"
-        "| Declared value | yes (USD) | no |")
-    st.markdown("**What the two original datasets look like**")
-    st.caption(f"LEMIS · {le['file']}, as published by EcoHealth Alliance (the 'cleaned' in the "
-               "name is theirs) · first five rows")
-    st.dataframe(load_head("lemis"), hide_index=True, use_container_width=True,
-                 column_config={c: st.column_config.Column(help=h) for c, h in lemis_fields().items()})
-    st.caption(f"CITES · the first five animal records from {s0}–{s1}, in download order "
-               f"({', '.join(ci['head_files'])} of {ci['files']} files)")
-    st.dataframe(load_head("cites"), hide_index=True, use_container_width=True,
-                 column_config={c: st.column_config.Column(help=h) for c, h in CITES_FIELDS.items()})
-    st.caption("Values are shown as they appear in the source files: LEMIS writes missing values as "
-               "NA; CITES leaves them blank and replaces confidential permit numbers with "
-               "anonymised IDs. Hover a column name for its meaning.")
+    ranked = (f", of which {cs['records_ranked']:,} are ranked (each trade counted once; records "
+              "already confiscated or for law enforcement set aside)") if cs else ""
+    with st.expander("The two source datasets"):
+        st.markdown(
+            "| | LEMIS (US Fish & Wildlife Service) | CITES Trade Database |\n|---|---|---|\n"
+            "| Content | Every wildlife import declared to USFWS | Trade in CITES-listed species, "
+            "reported by all Parties |\n"
+            f"| Version | [Zenodo record {le['record']}](https://doi.org/{le['doi']}), v{le['version']} "
+            f"(published {le['published']}) | Full download v{ci['version']} (UNEP-WCMC)"
+            + (f", extracted {ci['extracted']}" if ci["extracted"] else "") + " |\n"
+            f"| Size | {le['line_items']:,} import line items in {le['shipments']:,} shipments | "
+            f"{ci['records']:,} records ({ci['years'][0]}–{ci['years'][1]}) |\n"
+            f"| Period used | {le['years'][0]}–{le['years'][1]}, animals with a taxonomic class | "
+            f"Animal records {s0}–{s1} ({ci['animal_records_scored']:,}){ranked}; {t0}–{t1} "
+            "US-reported records for the alignment check |\n"
+            "| Labels | `action` (Cleared/Refused), `disposition` (Cleared/Seized/Abandoned/"
+            "Re-exported) | none |\n"
+            "| Declared value | yes (USD) | no |")
+        st.markdown("**What the two original datasets look like**")
+        st.caption(f"LEMIS · {le['file']}, as published by EcoHealth Alliance (the 'cleaned' in "
+                   "the name is theirs) · first five rows")
+        st.dataframe(load_head("lemis"), hide_index=True, use_container_width=True,
+                     column_config={c: st.column_config.Column(help=h)
+                                    for c, h in lemis_fields().items()})
+        st.caption(f"CITES · the first five animal records from {s0}–{s1}, in download order "
+                   f"({', '.join(ci['head_files'])} of {ci['files']} files)")
+        st.dataframe(load_head("cites"), hide_index=True, use_container_width=True,
+                     column_config={c: st.column_config.Column(help=h)
+                                    for c, h in CITES_FIELDS.items()})
+        st.caption("Values are shown as they appear in the source files: LEMIS writes missing "
+                   "values as NA; CITES leaves them blank and replaces confidential permit "
+                   "numbers with anonymised IDs. Hover a column name for its meaning.")
 
 
-def flag_card(r):
-    st.markdown(tier_badge(r["tier"]), unsafe_allow_html=True)
-    qty = f"{r['quantity_std']:,.0f}" if r["quantity_std"] >= 10 else f"{r['quantity_std']:,.3g}"
-    st.markdown(
-        f"#### {CLASS_ICON.get(r['class'], '🌿')} {r['taxon_display']}\n"
-        f"**{qty} {r['unit_group']}** · {r['product_code']} · "
-        f"source **{SOURCE.get(r['source'], r['source'])}** · purpose "
-        f"**{PURPOSE.get(r['purpose'], r['purpose'])}**  \n"
-        f"{cname(r['exporter'])} → {cname(r['importer'])}"
-        + (f" (origin {cname(r['origin'])})" if r["origin"] != r["exporter"] else "")
-        + f" · {int(r['year'])} · CITES Appendix {r['appendix']} · "
-          f"reported by {'importer' if r['reporter_type'] == 'I' else 'exporter'}")
-    st.markdown("**Why flagged**")
-    for reason in str(r["reasons"]).split(" | "):
-        if reason:
-            st.markdown(f"- {reason}")
-    top = max(1 - r["risk_percentile"], 0.0001)
-    st.markdown(
-        f"**Historical basis:** the LEMIS-trained model gives this pattern a "
-        f"{prob(r['score_supervised'])} enforcement-action likelihood under US conditions; "
-        f"overall it is in the **top {top:.2%}** of CITES records ranked for {int(r['year'])}.")
-    c = st.columns(4)
-    c[0].metric("Supervised (LEMIS pattern)", prob(r["score_supervised"]))
-    c[1].metric("Peer deviation", f"{r['score_peer']:.0%} pct.")
-    c[2].metric("Isolation Forest", f"{r['score_iforest']:.0%} pct.")
-    c[3].metric("K-Means distance", f"{r['score_kmeans']:.0%} pct.")
+def permit_card(p, q, gid, sampled, scale):
+    """Flag card for one permit of the queue, followed by the permit's records."""
+    r = q.iloc[p["row"]]
+    y = int(p["year"])
+    approx = "" if p["tier"] == "priority" else "about "
+    rank_line = (f"{top_text(p['top'])} of {y} permits · {approx}rank {p['rank']:,} of "
+                 f"{p['permits_in_year']:,}")
+    card = dict(r) | {"tier": p["tier"], "year": y, "product": r["product_code"]}
+    flag_card(card, rank_line, [s for s in str(r["reasons"]).split(" | ") if s],
+              r["peer_context"], r["warning"], p["tier"] != "routine")
+
+    recs = q[gid == p["gid"]]
+    no_permit = str(p["consignment"]).startswith("record ")
+    if no_permit:
+        st.markdown("**On this permit**")
+        st.markdown("No export permit is recorded, so this record is ranked on its own.")
+    else:
+        st.markdown(f"**On this permit** · {len(recs)} record{'s' if len(recs) > 1 else ''}")
+        t = recs.assign(_top=recs.index == p["row"]).sort_values(
+            ["_top", "reporter_type", "score"], ascending=[False, True, False])
+        st.dataframe(pd.DataFrame({
+            "": np.where(t["_top"], "★", ""),
+            "Reported by": t["reporter_type"].map({"E": "exporter", "I": "importer"}).astype(str),
+            "Taxon": t["taxon_display"].astype(str), "Product": t["product_code"].astype(str),
+            "Quantity": t["quantity_std"], "Unit": t["unit_group"].astype(str),
+            "Purpose": t["purpose"].astype(str), "Source": t["source"].astype(str),
+            "Origin": t["origin"].astype(str)}),
+            hide_index=True, use_container_width=True, height=min(38 + 35 * len(t), 260),
+            column_config={"Quantity": st.column_config.NumberColumn(format="%.4g")})
+        notes = ["★ is the record that sets the permit's score (its highest)."]
+        if p["both_reports"]:
+            notes.append("Both countries reported this permit. An importer's record appears "
+                         "only where it has no exact match in the exporter's report, so "
+                         "differences between the two reports show here.")
+        if sampled:
+            notes.append("This permit comes from the random sample of its tier, so some of its "
+                         "records may be missing.")
+        st.caption(" ".join(notes))
+
+    s = scale[str(y)]
+    with st.expander("Model details"):
+        lines = member_lines(r["score"], np.interp(r["score_xgboost"], s["xgboost"], SCALE_GRID),
+                             np.interp(r["score_random_forest"], s["random_forest"], SCALE_GRID),
+                             r["score_xgboost"], r["peer_deviation"], f"{y} CITES records")
+        lines.append(f"The permit's score is its highest record's, {p['consignment_score']:.4f}. "
+                     f"Cut-offs in {y}: priority from {s['priority_cut']:.4f}, review from "
+                     f"{s['review_cut']:.4f}.")
+        if not no_permit:
+            lines.append(f"Export permit (anonymised ID): {p['consignment']}")
+        for line in lines:
+            st.markdown(f"- {line}")
 
 
 def page_queue():
-    st.title("CITES review queue")
-    q = load_queue()
-    need(q, "Review queue")
+    st.title("Review queue")
+    P, gid = load_permits()
+    need(P, "Review queue")
+    q, scale = load_queue(), load_json(config.OUTPUTS_DIR / "cites_record_scale.json")
     cs = load_json(config.OUTPUTS_DIR / "cites_scoring_summary.json")
-    excl = f" {cs['excluded_known_enforcement']:,} records already marked as confiscated (source I) " \
-           "or law-enforcement trade (purpose L) are excluded from ranking." if cs else ""
-    st.caption("All priority records (top 1% per year) plus a random sample of the rest, "
-               "CITES 2015-2024 animal trade. Select a row to see its flag card." + excl)
-    st.caption("A flag is a statistical prompt for human review, not a finding of wrongdoing: "
-               "CITES records permitted trade, and most flagged records will be lawful.")
-    f1, f2, f3, f4, f5 = st.columns([1, 1, 1.2, 1.2, 1.2])
-    tier = f1.selectbox("Tier", ["priority", "review", "routine", "all"])
-    years = f2.multiselect("Year", sorted(q["year"].unique()), placeholder="All years")
-    cls = f3.multiselect("Class", sorted(q["class"].dropna().unique()), format_func=with_icon,
-                         placeholder="All classes")
-    exp = f4.multiselect("Exporter", sorted(q["exporter"].unique()), format_func=cname,
-                         placeholder="All exporters")
-    imp = f5.multiselect("Importer", sorted(q["importer"].unique()), format_func=cname,
-                         placeholder="All importers")
-    search = st.text_input("Search taxon", placeholder="e.g. Psittacus, Manis, Crocodylus")
-    v = q
-    if tier != "all":
-        v = v[v["tier"] == tier]
-    if years:
-        v = v[v["year"].isin(years)]
-    if cls:
-        v = v[v["class"].isin(cls)]
-    if exp:
-        v = v[v["exporter"].isin(exp)]
-    if imp:
-        v = v[v["importer"].isin(imp)]
+    excl = (f" {cs['excluded_known_enforcement']:,} records already confiscated (source I) or "
+            "for law enforcement (purpose L) are left out.") if cs else ""
+    st.markdown(
+        "CITES export permits, ranked within each year by how closely their records resemble "
+        "trade that US officers stopped. Work down from the top of a year: **priority** is the "
+        "top 1% of the year's permits, **review** the next 4%. Select a permit to see its flag "
+        "card.")
+    st.caption("A flag is a prompt for human review, not a finding of wrongdoing: most flagged "
+               "permits will be lawful." + excl)
+
+    years = sorted(P["year"].unique().tolist(), reverse=True)
+    f1, f2, f3 = st.columns([1, 1.5, 2.2])
+    year = f1.selectbox("Year", years + ["All years"])
+    tier = f2.selectbox("Tier", list(TIER_CHOICES), format_func=TIER_CHOICES.get)
+    search = f3.text_input("Search taxon", placeholder="e.g. Python, Manis, Crocodylus")
+    with st.expander("More filters"):
+        a, b, c = st.columns(3)
+        cls = a.multiselect("Class", sorted(P["class"].dropna().unique()), format_func=with_icon,
+                            placeholder="All classes")
+        exp = b.multiselect("Exporter", sorted(P["exporter"].unique()), format_func=cname,
+                            placeholder="All exporters")
+        imp = c.multiselect("Importer", sorted(P["importer"].unique()), format_func=cname,
+                            placeholder="All importers")
+        a, b = st.columns(2)
+        only_warn = a.checkbox("Only permits with a US-law warning")
+        only_both = b.checkbox("Only permits reported by both countries")
+    keep = (P["tier"] == tier).to_numpy()
+    if year != "All years":
+        keep &= (P["year"] == year).to_numpy()
     if search:
-        v = v[v["taxon_display"].str.contains(search, case=False, na=False)]
-    v = v.sort_values("score_hybrid", ascending=False).reset_index(drop=True)
-    st.markdown(f"**{len(v):,} records**")
-    cols = ["year", "class", "taxon_display", "product_code", "quantity_std", "unit_group", "purpose",
-            "source", "exporter", "importer", "appendix", "risk_percentile"]
-    show = v[cols + (["tier"] if tier == "all" else [])].head(5000)
-    show = show.assign(**{"class": show["class"].astype(object).map(with_icon)}).rename(
-        columns={"taxon_display": "taxon", "product_code": "term", "quantity_std": "quantity",
-                 "unit_group": "unit", "risk_percentile": "risk pct."})
-    event = st.dataframe(
-        show, use_container_width=True, hide_index=True, height=340,
-        on_select="rerun", selection_mode="single-row",
-        column_config={"risk pct.": st.column_config.ProgressColumn(
-            "risk pct.", min_value=0.0, max_value=1.0, format="%.4f"),
-            "quantity": st.column_config.NumberColumn(format="%.4g"),
-            "year": st.column_config.NumberColumn(format="%d")})
-    rows = event.selection.rows if event and event.selection else []
-    if len(v):
-        st.divider()
+        keep &= np.isin(P["gid"], np.unique(
+            gid[q["taxon_display"].str.contains(search, case=False, na=False).to_numpy()]))
+    for values, col in ((cls, "class"), (exp, "exporter"), (imp, "importer")):
+        if values:
+            keep &= P[col].isin(values).to_numpy()
+    if only_warn:
+        keep &= P["any_warning"].to_numpy()
+    if only_both:
+        keep &= P["both_reports"].to_numpy()
+    v = P[keep].sort_values(["top", "year"], ascending=[True, False]).reset_index(drop=True)
+
+    left, right = st.columns([1.2, 1], gap="large")
+    with left:
+        st.markdown(f"**{len(v):,} permits**" + ("" if tier == "priority" else
+                                                 " · a random sample of this tier"))
+        cols = {"Rank": v["rank"]} | ({"Year": v["year"]} if year == "All years" else {}) | {
+            "Taxon": v["taxon_label"], "Product": v["product_code"].astype(str),
+            "Route": v["route"], "Records": v["records"]}
+        event = st.dataframe(
+            pd.DataFrame(cols).head(3000), hide_index=True, use_container_width=True, height=640,
+            on_select="rerun", selection_mode="single-row",
+            column_config={
+                "Rank": st.column_config.NumberColumn(
+                    format="%d", width="small",
+                    help="Position among the year's permits, 1 = highest score. Approximate for "
+                         "the sampled review and routine tiers."),
+                "Year": st.column_config.NumberColumn(format="%d", width="small"),
+                "Taxon": st.column_config.Column(width="medium",
+                                                 help="The record that sets the permit's score; "
+                                                      "+n = other taxa on the permit"),
+                "Product": st.column_config.Column(width="medium"),
+                "Route": st.column_config.Column(width="small", help="Exporter → importer"),
+                "Records": st.column_config.NumberColumn(width="small",
+                                                         help="Records on this permit")})
+        if len(v) > 3000:
+            st.caption("Showing the first 3,000. Narrow the list with the filters.")
+    with right:
+        if not len(v):
+            st.info("No permits match these filters.")
+            return
+        rows = event.selection.rows if event and event.selection else []
+        i = rows[0] if rows and rows[0] < min(len(v), 3000) else 0
         if not rows:
-            st.caption("Showing the highest-ranked record - select any row to inspect it instead.")
-        flag_card(v.iloc[rows[0] if rows else 0])
+            st.caption("Showing the first permit in the list. Select a row to see another.")
+        with st.container(border=True):
+            permit_card(v.iloc[i], q, gid, tier != "priority", scale)
 
 
-def score_one(record, mode):
-    if mode == "CITES":
-        stack, fb = load_model("cites_stack.joblib"), load_model("feature_builder_cites.joblib")
-    else:
-        stack, fb = load_model("full_stack.joblib"), load_model("feature_builder_lemis.joblib")
-    need(stack, "Model files")
-    F = fb.transform(pd.DataFrame([record]))
-    s = {k: float(v[0]) for k, v in stack.score(F).items()}
-    X, _ = to_model_matrix(F, stack.features, stack.categories)
-    reasons = explain_rows(stack.xgb, X, F)[0]
-    return s, reasons, stack
+PRESETS = {
+    "(blank)": dict(
+        us=False, genus="", species="", cls="Reptilia", product="live", qty=1.0, unit="count",
+        purpose="T", source="W", exporter="ID", origin="ID", importer="US", appendix="II",
+        year=2024, value=100.0, port="LA", month=6),
+    "Indian star tortoise: a real US case from 2000, seized": dict(
+        us=True, genus="Geochelone", species="elegans", cls="Reptilia", product="live", qty=2.0,
+        unit="count", purpose="P", source="W", exporter="MY", origin="MY", importer="US",
+        appendix="II", year=2024, value=800.0, port="SF", month=2),
+    "Saiga antelope medicine, China → Japan: a priority CITES record (2019)": dict(
+        us=False, genus="Saiga", species="tatarica", cls="Mammalia", product="extracts_medicine",
+        qty=23.4, unit="kg", purpose="T", source="U", exporter="CN", origin="XX", importer="JP",
+        appendix="II", year=2019, value=100.0, port="LA", month=6),
+    "Captive-bred ball pythons, Ghana → US, commercial": dict(
+        us=False, genus="Python", species="regius", cls="Reptilia", product="live", qty=200.0,
+        unit="count", purpose="T", source="C", exporter="GH", origin="GH", importer="US",
+        appendix="II", year=2020, value=2400.0, port="NY", month=5),
+}
 
 
 def page_check():
-    st.title("Check a shipment")
+    st.title("Check a record")
+    st.markdown("Enter one trade record to see where WildGuard would rank it and why. It is "
+                "ranked as if it were a permit on its own, against that year's CITES permits.")
     demo = st.query_params.get("example") == "tortoise"     # deep link used for the demo video
-    mode = st.radio("Record type", ["CITES", "LEMIS"], horizontal=True, index=1 if demo else 0,
-                    format_func=lambda m: {
-        "CITES": "CITES trade record (transfer model, global norms)",
-        "LEMIS": "US import declaration with declared value (full LEMIS model)"}[m])
-    presets = {
-        "Indian star tortoise - real LEMIS case (2000), actually seized": dict(
-            genus="Geochelone", species="elegans", cls="Reptilia", product="live", qty=2.0,
-            unit="count", purpose="P", source="W", exporter="MY", origin="MY", appendix="II",
-            value=800.0, port="SF", month=2, year=2000),
-        "Routine: captive-bred ball pythons, commercial": dict(
-            genus="Python", species="regius", cls="Reptilia", product="live", qty=200.0,
-            unit="count", purpose="T", source="C", exporter="GH", origin="GH", appendix="II",
-            value=2400.0, port="NY", month=5, year=2014),
-    }
-    names = ["(blank)"] + list(presets)
+    names = list(PRESETS)
     preset = st.selectbox("Start from an example", names, index=1 if demo else 0)
-    p = presets.get(preset, dict(genus="", species="", cls="Reptilia", product="live", qty=1.0,
-                                 unit="count", purpose="T", source="W", exporter="ID",
-                                 origin="ID", appendix="II", value=100.0, port="LA", month=6,
-                                 year=2020))
-    st.caption("The tortoise case is in LEMIS training years (2000), so its score is an "
-               "in-sample illustration, not a test result.")
-    with st.form("shipment"):
+    p = PRESETS[preset]
+    us = st.toggle("Add US import declaration details (declared value, entry port, month)",
+                   value=p["us"], key=f"us::{preset}",
+                   help="Uses the full model, which also learned from these US-only fields. The "
+                        "record is then ranked among US import shipments, 2000–2014, instead of "
+                        "CITES permits.")
+    cites_years = list(config.CITES_SCORE_YEARS)
+    countries = sorted(COUNTRY)
+    with st.form("record"):
         a, b, c, d = st.columns(4)
         genus = a.text_input("Genus", p["genus"])
-        species = b.text_input("Species", p["species"])
+        species = b.text_input("Species", p["species"], help="Leave blank for a genus-level record")
         cls = c.selectbox("Class", CLASSES, index=CLASSES.index(p["cls"]), format_func=with_icon)
-        appendix = d.selectbox("CITES appendix", ["I", "II", "III", "not_listed"],
-                               index=["I", "II", "III", "not_listed"].index(p["appendix"]))
+        appendix = d.selectbox("CITES listing", list(APPENDIX_LABELS),
+                               index=list(APPENDIX_LABELS).index(p["appendix"]),
+                               format_func=APPENDIX_LABELS.get)
         a, b, c, d = st.columns(4)
-        product = a.selectbox("Product form", PRODUCT_GROUPS, index=PRODUCT_GROUPS.index(p["product"]))
+        product = a.selectbox("Product", PRODUCT_GROUPS, index=PRODUCT_GROUPS.index(p["product"]),
+                              format_func=product_label)
         qty = b.number_input("Quantity", min_value=0.0, value=p["qty"])
-        unit = c.selectbox("Unit", ["count", "kg", "litre", "m2", "m3", "m"],
-                           index=["count", "kg", "litre", "m2", "m3", "m"].index(p["unit"]))
-        year = d.number_input("Year", 2000, 2030, p["year"])
+        unit = c.selectbox("Unit", UNITS, index=UNITS.index(p["unit"]))
+        if us:
+            month = d.number_input("Month", 1, 12, p["month"])
+            year = None
+        else:
+            year = d.selectbox("Year", cites_years, index=cites_years.index(p["year"]),
+                               help="The record is ranked against this year's permits.")
+            month = None
         a, b, c, d = st.columns(4)
         purposes = list(PURPOSE)
         purpose = a.selectbox("Purpose", purposes, index=purposes.index(p["purpose"]),
@@ -456,244 +699,399 @@ def page_check():
         sources = [k for k in SOURCE if k != "unknown"]
         source = b.selectbox("Source", sources, index=sources.index(p["source"]),
                              format_func=lambda k: f"{k} - {SOURCE[k]}")
-        countries = sorted(COUNTRY)
         exporter = c.selectbox("Exporter", countries, index=countries.index(p["exporter"]),
                                format_func=cname)
         origin = d.selectbox("Origin", countries, index=countries.index(p["origin"]),
                              format_func=cname)
-        value, port, month = None, None, None
-        if mode == "LEMIS":
-            a, b, c, _ = st.columns(4)
+        a, b, c, d = st.columns(4)
+        if us:
+            importer = "US"
             value = a.number_input("Declared value (USD)", min_value=0.0, value=p["value"])
-            port = b.text_input("US entry port code", p["port"])
-            month = c.number_input("Month", 1, 12, p["month"])
-        submitted = st.form_submit_button("Score this shipment", type="primary")
+            ports = sorted(PORT, key=PORT.get)
+            port = b.selectbox("US entry port", ports, index=ports.index(p["port"]),
+                               format_func=lambda k: f"{PORT[k]} ({k})")
+        else:
+            importer = a.selectbox("Importer", countries, index=countries.index(p["importer"]),
+                                   format_func=cname)
+            value, port = np.nan, None
+        submitted = st.form_submit_button("Rank this record", type="primary")
     if not (submitted or demo):
         return
-    rec = {"year": int(year), "month": float(month) if month else np.nan, "class": cls,
-           "genus": genus.strip().lower(), "taxon": f"{genus} {species}".strip().lower(),
+    if not genus.strip():
+        st.warning("Enter a genus: the record's peers and its route are measured by genus.")
+        return
+    if not us and (source == "I" or purpose == "L"):
+        st.info("This record is already enforcement material (a confiscated specimen or a "
+                "law-enforcement purpose), so WildGuard does not rank it for review.")
+        return
+
+    g = genus.strip().lower()
+    order_name, family = genus_taxonomy().get(g, ("", ""))
+    rec = {"year": year or max(config.DEPLOY_YEARS), "month": float(month) if month else np.nan,
+           "class": cls, "order_name": order_name, "family": family, "genus": g,
+           "taxon": f"{genus} {species}".strip().lower(),
            "taxon_display": f"{genus} {species}".strip(), "product_group": product,
            "unit_group": unit, "quantity_std": float(qty), "value_usd": value,
            "purpose": purpose, "source": source, "origin": origin, "exporter": exporter,
-           "importer": "US", "port": port or "unknown", "appendix": appendix,
+           "importer": importer, "port": port or "unknown", "appendix": appendix,
            "origin_region": region(origin), "exporter_region": region(exporter)}
-    s, reasons, stack = score_one(rec, mode)
-    if mode == "CITES" and (source == "I" or purpose == "L"):
-        st.info("This record is already enforcement material (confiscated specimen or "
-                "law-enforcement purpose), so WildGuard does not rank it for review.")
-        return
-    if mode == "CITES":
-        cs = load_json(config.OUTPUTS_DIR / "cites_scoring_summary.json")
-        need(cs, "CITES scoring summary")
-        pct = float(np.interp(s["hybrid"], cs["hybrid_score_quantiles"], np.linspace(0, 1, 1001)))
-        tier = "priority" if pct > 0.99 else "review" if pct > 0.95 else "routine"
-        headline = (f"In the **top {max(1 - pct, 0.001):.1%}** of CITES records ranked for review, "
-                    "2015-2024.")
+    scorer = load_scorer("full" if us else "cites")
+    need(scorer, "Model files")
+    ens, fb = scorer
+    F = fb.transform(pd.DataFrame([rec]))
+    m = {k: float(v[0]) for k, v in ens.member_scores(F).items()}
+    if us:
+        L = load_json(config.OUTPUTS_DIR / "lemis_record_scale.json")
+        need(L, "US record scale")
+        pct = {k: float(ens.rankers[k].transform(v)) for k, v in m.items()}
+        cuts, grid = (L["priority_cut"], L["review_cut"]), L["shipment_score"]
+        population = f"US import shipments, {L['years'][0]}–{L['years'][1]}"
+        ranked_as = "a shipment of one line item"
     else:
-        t_low, t_high = stack.bands
-        tier = ("priority" if s["hybrid"] >= t_high else
-                "review" if s["hybrid"] >= t_low else "auto-clear")
-        headline = (f"Estimated enforcement-action probability **{s['hybrid']:.1%}** "
-                    f"(US conditions; LEMIS base rate ≈ 1.7%).")
-    st.markdown(tier_badge(tier), unsafe_allow_html=True)
-    st.markdown(headline)
-    st.markdown("**Why**" if reasons else "No feature pushed the risk up.")
-    for r in reasons:
-        st.markdown(f"- {r}")
-    c = st.columns(4)
-    c[0].metric("Supervised (LEMIS pattern)", prob(s["supervised"]))
-    c[1].metric("Peer deviation", f"{s['peer']:.0%} pct.")
-    c[2].metric("Isolation Forest", f"{s['iforest']:.0%} pct.")
-    c[3].metric("K-Means distance", f"{s['kmeans']:.0%} pct.")
+        S = load_json(config.OUTPUTS_DIR / "cites_record_scale.json")
+        need(S, "CITES record scale")
+        S = S[str(year)]
+        pct = {k: float(np.interp(v, S[k], SCALE_GRID)) for k, v in m.items()}
+        cuts, grid = (S["priority_cut"], S["review_cut"]), S["permit_score"]
+        population = f"{year} CITES permits"
+        ranked_as = "a permit with this one record"
+    score = (pct["xgboost"] + pct["random_forest"]) / 2
+    tier = "priority" if score >= cuts[0] else "review" if score >= cuts[1] else "routine"
+    top = 1 - float(np.interp(score, grid, SCALE_GRID))
+    card = rec | {"tier": tier, "product": product_label(product), "year": year}
+    with st.container(border=True):
+        flag_card(card, f"{top_text(top)} of {population}",
+                  explain_rows(ens.xgb, ens.matrix(F), F)[0],
+                  peer_context(PeerDeviationScorer().parts(F))[0], us_law_warning(F)[0],
+                  tier != "routine")
+        st.caption(f"Ranked as {ranked_as}. Scored by " + (
+            "the full model: the shared fields plus declared value, entry port and month."
+            if us else "the CITES model, which uses only the 21 fields LEMIS and CITES share."))
+        with st.expander("Model details"):
+            for line in member_lines(score, pct["xgboost"], pct["random_forest"], m["xgboost"],
+                                     float(PeerDeviationScorer().score(F)[0]),
+                                     population.replace("permits", "records")
+                                     .replace("shipments", "line items")):
+                st.markdown(f"- {line}")
+            st.markdown(f"- Cut-offs: priority from {cuts[0]:.4f}, review from {cuts[1]:.4f} "
+                        "(the top 1% and the next 4% of the population).")
+    if us:
+        st.caption("Both models were trained on US imports 2000–2014, so a declaration from those "
+                   "years (such as the tortoise case) is an in-sample illustration, not a test "
+                   "result.")
 
 
 def page_evaluation():
     st.title("Does it work?")
-    t = load_test_scores()
     ev = load_json(config.OUTPUTS_DIR / "lemis_evaluation.json")
-    need(t, "Held-out scores")
+    ships = load_test_shipments()
+    need(ev, "Evaluation results")
+    need(ships, "Held-out scores")
     st.markdown(
-        "Ground truth exists only in LEMIS, so the rigorous test is there: models were trained "
-        "on 2000-2010, tuned on 2011-2012 and are scored here on **2013-2014 shipments they never "
-        "saw**, against what US officers actually did (refused / seized / abandoned / "
-        "re-exported vs cleared).")
-    a, b = st.columns([1, 2])
+        "Only the US import records (LEMIS) say what officers actually did, so that is where "
+        "WildGuard was tested: once, on **2013–2014 shipments the models never saw**, against "
+        "what happened to each (refused, seized, abandoned or re-exported, versus cleared).")
+    a, b = st.columns([1, 2], gap="large")
+    sub = a.selectbox("Shipments", list(SUBSETS), format_func=SUBSETS.get)
     budget = a.slider("Your team can inspect this share of shipments", 0.5, 30.0, 5.0, 0.5,
                       format="%.1f%%") / 100
-    subset = a.radio("Shipments", ["All", "Commercial purpose only"], horizontal=True)
-    v = t if subset == "All" else t[t["purpose"] == "T"]
+    v = ships[sub]
     y = v["label"].to_numpy()
-    models = [("transfer:hybrid", "WildGuard (deployed transfer hybrid)", GREEN),
-              ("full:hybrid", "Hybrid + LEMIS-only value/port features", BLAZE),
-              ("baseline:listing_rule", "Rule: most endangered + wild first", SLATE),
-              ("baseline:random", "Random inspection", GREY)]
     k = max(1, int(round(budget * len(v))))
     res = {}
-    for col, label, _ in models:
+    for col in ("ensemble", "baseline:listing_rule"):
         top = np.argsort(-v[col].to_numpy(), kind="stable")[:k]
         res[col] = (y[top].sum() / max(y.sum(), 1), y[top].mean())
-    caught, prec = res["transfer:hybrid"]
-    a.metric("Enforcement cases caught", f"{caught:.0%}")
-    a.caption(f"random inspection: {res['baseline:random'][0]:.0%} · listing rule: "
+    caught, per = res["ensemble"]
+    a.metric("Enforcement cases found", f"{caught:.0%}",
+             help="Share of the shipments with an enforcement case that fall within the budget.")
+    # random inspection by its expected value: it finds the budget's share of cases
+    a.caption(f"random inspection: {budget * 100:g}% · listing rule: "
               f"{res['baseline:listing_rule'][0]:.0%}")
-    a.metric("Real cases per 100 inspections", f"{prec * 100:.0f}")
-    a.caption(f"random inspection: {res['baseline:random'][1] * 100:.1f}")
-    a.caption(f"{len(v):,} held-out shipment line items, {y.sum():,} enforcement cases "
+    a.metric("Real cases per 100 inspections", f"{per * 100:.0f}")
+    a.caption(f"random inspection: {y.mean() * 100:.1f}")
+    a.caption(f"{len(v):,} held-out shipments, {int(y.sum()):,} with an enforcement case "
               f"({y.mean():.1%}).")
     fig = go.Figure()
-    for col, label, color in models:
-        order = np.argsort(-v[col].to_numpy(), kind="stable")
-        cum = np.cumsum(y[order]) / max(y.sum(), 1)
-        idx = np.unique(np.linspace(0, len(v) - 1, 400).astype(int))
+    idx = np.unique(np.linspace(0, int(0.3 * len(v)), 400).astype(int))
+    for col, label, color in (("ensemble", "WildGuard", GREEN),
+                              ("baseline:listing_rule", MODEL_NAMES["baseline:listing_rule"], SLATE),
+                              ("baseline:random", "Random inspection (expected)", GREY)):
+        if col == "baseline:random":
+            cum = np.arange(1, len(v) + 1) / len(v)
+        else:
+            cum = np.cumsum(y[np.argsort(-v[col].to_numpy(), kind="stable")]) / max(y.sum(), 1)
         fig.add_trace(go.Scatter(x=(idx + 1) / len(v) * 100, y=cum[idx] * 100, name=label,
                                  line=dict(color=color, width=2),
-                                 hovertemplate="inspect %{x:.1f}% → catch %{y:.1f}%<extra>" + label + "</extra>"))
+                                 hovertemplate="inspect %{x:.1f}% → find %{y:.1f}%<extra>"
+                                               + label + "</extra>"))
     fig.add_vline(x=budget * 100, line=dict(color="#898781", width=1))
-    fig.update_xaxes(title="Share of shipments inspected (%)", range=[0, 30])
-    fig.update_yaxes(title="Enforcement cases caught (%)", range=[0, 100])
-    b.markdown("**Cases caught per inspection budget**")
+    fig.update_xaxes(title="Share of shipments inspected (%), highest score first", range=[0, 30])
+    fig.update_yaxes(title="Enforcement cases found (%)", range=[0, 100])
+    b.markdown("**Cases found for each inspection budget**")
     b.plotly_chart(plotly_layout(fig, 420), use_container_width=True)
 
-    st.subheader("Model comparison (held-out 2013-2014)")
-    tab = load_csv("lemis_evaluation_table.csv")
-    if tab is not None:
-        names = {
-            "full:hybrid": "Hybrid - full features", "transfer:hybrid": "Hybrid - transfer (deployed)",
-            "full:supervised": "XGBoost - full", "transfer:supervised": "XGBoost - transfer",
-            "full:random_forest": "Random Forest - full",
-            "full:logistic_regression": "Logistic Regression - full",
-            "full:unsup_mean": "Unsupervised mean - full",
-            "transfer:unsup_mean": "Unsupervised mean - transfer",
-            "full:iforest": "Isolation Forest - full", "transfer:iforest": "Isolation Forest - transfer",
-            "full:peer": "Peer deviation - full", "transfer:peer": "Peer deviation - transfer",
-            "full:kmeans": "K-Means distance - full", "transfer:kmeans": "K-Means distance - transfer",
-            "baseline:listing_rule": "Listing rule (most endangered first)",
-            "baseline:random": "Random inspection"}
-        tab = tab.rename(columns={"Unnamed: 0": "model"})
-        tab["model"] = tab["model"].map(names).fillna(tab["model"])
-        tab = tab.set_index("model")[["pr_auc", "roc_auc", "f1", "precision@1%", "recall@5%",
-                                      "lift@1%", "inspect_for_80%_recall"]]
-        tab.columns = ["PR-AUC", "ROC-AUC", "F1", "precision @ top 1%", "recall @ top 5%",
-                       "lift @ top 1%", "inspect to catch 80%"]
-        st.dataframe(tab.sort_values("PR-AUC", ascending=False).style.format("{:.3f}"),
-                     use_container_width=True, height=598)
-        st.caption("PR-AUC and recall at a fixed inspection budget are the headline metrics - at a "
-                   "1.7% positive rate, accuracy would reward a model that clears everything.")
-    if ev:
-        st.subheader("Confidence-aware triage")
-        bands = ev["confidence_bands"]["transfer"]["test"]
-        st.dataframe(pd.DataFrame(bands).T.rename(columns={
-            "share_of_records": "share of shipments", "share_of_positives": "share of enforcement cases",
+    met = ev["metrics_test"]
+    e_s, x_s = met[f"{sub}:shipments"]["ensemble"]["pr_auc"], met[f"{sub}:shipments"]["xgboost"]["pr_auc"]
+    d = next(r for r in ev["pr_auc_intervals"][sub]["ensemble_minus"] if r["b"] == "xgboost")
+    sig = d["high_95"] < 0 or d["low_95"] > 0
+    st.markdown(
+        f"**One result went against the design:** on these shipments XGBoost alone ranked "
+        f"{'slightly better' if x_s > e_s else 'no better'} than the two-model ensemble "
+        f"(PR-AUC {x_s:.3f} vs {e_s:.3f}; per line item the ensemble's difference is "
+        f"{d['difference']:+.3f}, 95% interval {d['low_95']:+.3f} to {d['high_95']:+.3f}"
+        f"{', a significant difference' if sig else ''}). The ensemble was chosen on 2011, "
+        "before the test, where it was ahead; it was kept so that the test stays a test.")
+
+    with st.expander("How this was measured"):
+        yr = ev["years"]
+        st.markdown(
+            f"- **Years:** trained on {yr['train'][0]}–{yr['train'][1]}; every design choice "
+            "made on 2011; 2012 held back for the confidence bands; tested once on "
+            f"{yr['test'][0]}–{yr['test'][1]}. The deployed model was then refit on "
+            f"{yr['deployed_model_trained_on'][0]}–{yr['deployed_model_trained_on'][1]}.\n"
+            "- **Shipments:** a shipment's score is its highest line item's; it counts as a case "
+            "if any of its line items drew enforcement action. A shipment's line items were never "
+            "split between training and testing.\n"
+            "- **The deciding measure:** PR-AUC on line items of CITES-listed species, the part of "
+            "LEMIS most like CITES. It summarises the whole ranking without fixing a budget; "
+            "accuracy would reward clearing everything, since cases are under 2% of line items.\n"
+            "- **Listing rule:** Appendix I first, then II and III, wild-caught first within "
+            "each, using the listing in force in the shipment year.")
+    with st.expander("All models compared"):
+        unit = st.radio("Counted per", ["shipments", "line_items"], horizontal=True,
+                        format_func=lambda u: u.replace("_", " "))
+        mt, iv = met[f"{sub}:{unit}"], ev["pr_auc_intervals"][sub]["pr_auc"]
+        tab = pd.DataFrame({
+            "PR-AUC": [mt[k]["pr_auc"] for k in TEST_MODELS],
+            "ROC-AUC": [mt[k]["roc_auc"] for k in TEST_MODELS],
+            "found at 1%": [mt[k]["recall@1%"] for k in TEST_MODELS],
+            "found at 5%": [mt[k]["recall@5%"] for k in TEST_MODELS],
+            "inspect to find 80%": [mt[k]["inspect_for_80%_recall"] for k in TEST_MODELS]},
+            index=[MODEL_NAMES[k] for k in TEST_MODELS])
+        fmt = {c: "{:.3f}" for c in ("PR-AUC", "ROC-AUC")} | \
+              {c: "{:.1%}" for c in ("found at 1%", "found at 5%", "inspect to find 80%")}
+        if unit == "line_items":
+            tab.insert(1, "95% interval", [f"{iv[k]['low_95']:.3f}–{iv[k]['high_95']:.3f}"
+                                           if k in iv else "" for k in TEST_MODELS])
+        st.dataframe(tab.style.format(fmt), use_container_width=True)
+        st.caption("Intervals resample whole shipments (1,000 bootstrap draws). 'Found at 5%': "
+                   "share of cases among the top 5% ranked; 'inspect to find 80%': share that "
+                   "must be inspected to find 80% of the cases.")
+        diff = pd.DataFrame(ev["pr_auc_intervals"][sub]["ensemble_minus"])
+        diff["compared with"] = diff["b"].map(MODEL_NAMES)
+        st.markdown("**WildGuard's PR-AUC minus each other model's, per line item**")
+        st.dataframe(diff.set_index("compared with")[["difference", "low_95", "high_95"]]
+                     .rename(columns={"low_95": "95% low", "high_95": "95% high"})
+                     .style.format("{:+.4f}"), use_container_width=True)
+    c3 = ev["lemis_only_fields_c3"]
+    with st.expander("What the US-only fields add (declared value, port, month)"):
+        dd = c3["full_minus_shared"][0]
+        st.markdown(
+            f"CITES has no declared value, entry port or month, so WildGuard cannot use them. On "
+            f"the {c3['line_items']:,} test line items from 2013 with a recorded value (2014 has "
+            f"none), the same ensemble with these fields reaches PR-AUC "
+            f"{c3['pr_auc']['full_ensemble']['pr_auc']:.3f} against "
+            f"{c3['pr_auc']['ensemble']['pr_auc']:.3f} without them: **{dd['difference']:+.3f}** "
+            f"(95% interval {dd['low_95']:+.3f} to {dd['high_95']:+.3f}). That is what aligning "
+            "the two datasets gives up.")
+    bands = ev["confidence_bands"]
+    with st.expander("Confidence bands for US triage"):
+        st.dataframe(pd.DataFrame(bands["test"]).T.rename(columns={
+            "share_of_records": "share of line items",
+            "share_of_positives": "share of enforcement cases",
             "positive_rate": "enforcement rate in band"}).style.format("{:.1%}"),
             use_container_width=True)
-        st.caption("Thresholds were fixed on 2011-2012: auto-clear keeps ≥95% of validation "
-                   "enforcement cases above it; priority = top 2% of validation scores.")
+        st.caption(f"Thresholds fixed on {bands['fixed_on']}: auto-clear keeps 95% of that year's "
+                   "cases above it; priority is the top 2% of that year's scores. Shown on the "
+                   "2013–2014 test line items.")
     ds = load_json(config.OUTPUTS_DIR / "domain_shift.json")
     if ds:
-        st.subheader("Does it transfer? Simulated domain shift")
-        A = ds["A_simulated_shift"]
-        labels = {"in_domain_reference": "In-domain reference (no shift)",
-                  "naive_transfer": "Naive transfer (source norms)",
-                  "renormalised_transfer": "Re-normalised norms (no labels)",
-                  "importance_weighted": "Importance-weighted (no labels)",
-                  "few_shot_1pct_target_labels": "+ 1% of target labels",
-                  "few_shot_5pct_target_labels": "+ 5% of target labels",
-                  "target_oracle": "Target oracle (all target labels)"}
-        rows = pd.DataFrame({labels[k]: v for k, v in A.items() if k in labels}).T
-        rows = rows[["pr_auc", "roc_auc", "recall@5%", "precision@1%"]]
-        rows.columns = ["PR-AUC", "ROC-AUC", "recall @ top 5%", "precision @ top 1%"]
-        st.dataframe(rows.style.format("{:.3f}"), use_container_width=True)
-        st.caption(f"Trained without any shipments exported from {A['setup']['target_region']}, "
-                   f"tested on {A['setup']['n_target_test']:,} held-out {A['setup']['target_region']} "
-                   "shipments.")
+        with st.expander("Does it transfer to CITES?"):
+            rec, dep = (ds["recording_shift_lemis_listed_vs_cites_us_2013_14"],
+                        ds["deployment_shift_lemis_train_vs_cites_ranked"])
+            st.markdown(
+                "CITES has no outcomes, so transfer cannot be tested directly. What can be "
+                "measured:\n"
+                f"- **Recording:** even for the same US trade (LEMIS listed species against US-reported "
+                f"CITES records, 2013–2014), a classifier tells the two datasets apart with AUC "
+                f"{rec['domain_classifier_auc']:.2f} from the raw fields (0.5 = indistinguishable).\n"
+                f"- **Trade mix:** LEMIS training records against the ranked CITES records: AUC "
+                f"{dep['domain_classifier_auc']:.2f}. The largest shifts are in the Appendix, "
+                "class and product (table).\n"
+                "- **Time:** within LEMIS, PR-AUC fell from 0.570 to 0.512 as the gap between the "
+                "training and scored years grew from 1 to 7 years (notebook 13), so the deployed "
+                "model was refit on 2000–2014, and later CITES years are likely ranked less "
+                "well.\n"
+                "- **Jurisdiction:** not measurable; there are no enforcement outcomes outside "
+                "the US.")
+            psi = pd.DataFrame({"same US trade, recorded twice": rec["psi"],
+                                "LEMIS training vs CITES ranked": dep["psi"]})
+            st.dataframe(psi.style.format("{:.3f}"), use_container_width=True)
+            st.caption("Population stability index per field: above 0.25 is usually read as a "
+                       "large shift.")
+            fig_path = config.FIGURES_DIR / "domain_shift_pca.png"
+            if fig_path.exists():
+                st.image(str(fig_path), caption="The deviation features of LEMIS and CITES, "
+                                                "projected on their first two principal components")
 
 
 def page_patterns():
-    st.title("Risk patterns in CITES trade")
-    st.caption("Share of each group's records in the priority tier (top 1% per year). "
-               "Uniform risk would put every group at 1%.")
+    st.title("What it flags")
+    st.markdown(
+        "CITES has no enforcement outcomes, so the ranking cannot be scored there. Instead it was "
+        "checked against evidence from outside the model. Each pass mark was written down before "
+        "the result was seen. A pass means the ranking is *consistent* with that evidence, not "
+        "that it is accurate.")
+    val = load_json(config.OUTPUTS_DIR / "cites_validation.json")
+    need(val, "CITES checks")
+    u, top50 = load_csv("cites_unodc_consistency.csv"), load_csv("cites_top50_review.csv")
+    sup = load_json(config.OUTPUTS_DIR / "lemis_supplementary.json")
+    uc, cp, tr = val["unodc_consistency"], val["confiscated_proxy"], val["top_records"]
+    none_c = top50[top50["category"] == "c"] if top50 is not None else None
+    checks = [
+        (uc["pass"], "1 · Seizure data (UNODC)",
+         f"Animal groups seized more often than their legal trade suggests are flagged more "
+         f"often: Spearman ρ = {uc['spearman_rho_wildguard']:.2f} (one-sided p = "
+         f"{uc['permutation_p_one_sided']}), above the listing rule's "
+         f"{uc['spearman_rho_listing_rule']:.2f}.",
+         "Pass: ρ positive with p below 0.05, and above the listing rule's."),
+        (cp["pass"], "2 · Confiscated specimens",
+         f"Retrained without any source information, the model still ranks confiscated "
+         f"specimens above other records: ROC-AUC {cp['roc_auc']:.3f} (95% interval "
+         f"{cp['low_95']:.3f}–{cp['high_95']:.3f}); {cp['share_of_source_I_in_top_5pct']:.0%} of "
+         "them fall in the top 5%.",
+         "Pass: the interval's lower end above 0.5."),
+        (tr["pass"], "3 · The top 50 taxa",
+         f"Of the {tr['records']} highest-ranked taxa, {tr['share_a_recognised_pattern']:.0%} show "
+         f"a recognised risk pattern, {tr['share_b_us_law_abroad']:.0%} a pattern of US law, and "
+         f"{tr['share_c_no_apparent_reason']:.0%} no apparent reason.",
+         "Pass: at least 50% recognised and at most 20% with no apparent reason."),
+    ]
+    for col, (passed, title, result, rule) in zip(st.columns(3), checks):
+        with col.container(border=True):
+            st.markdown(f"{check_badge(passed)} &nbsp; **{title}**", unsafe_allow_html=True)
+            st.markdown(result)
+            st.caption(rule)
+    if none_c is not None and len(none_c):
+        same = none_c.groupby(["purpose", "source", "appendix"]).size()
+        into = ", ".join(f"{COUNTRY.get(c, c)} {n}" for c, n in
+                         none_c["importer"].value_counts().items())
+        pattern = ""
+        if len(same) == 1:
+            (pu, so, ap), = same.index
+            pattern = (f"all {len(none_c)} are {PURPOSE.get(pu, pu).lower()}-purpose imports of "
+                       f"{SOURCE.get(so, so)} Appendix {ap} specimens (importers: {into}). ")
+        personal = (f"In 2013–2014, {sup['personal_only']['ensemble']['base_rate']:.0%} of US "
+                    "personal-purpose line items drew enforcement action, so the models learned "
+                    "this pattern from US practice; ") if sup else ""
+        st.markdown(
+            f"**Why check 3 fails:** {pattern}{personal}it is not one of the patterns fixed in "
+            "advance as recognised risks. The result is reported as a fail, not re-ruled. The "
+            "categories were applied by a stated rule (`validate_cites.classify`), not by human "
+            "reviewers.")
+
+    if u is not None:
+        with st.expander("Check 1 in detail: the 14 UNODC animal groups"):
+            show = (u["wildguard_priority_share"] >= 0.01) | (u["seizure_to_trade_ratio"] >= 5)
+            pos = np.where(u["group"] == "Carnivores", "bottom center", "top center")
+            fig = go.Figure(go.Scatter(
+                x=u["seizure_to_trade_ratio"], y=u["wildguard_priority_share"] * 100,
+                mode="markers+text", text=u["group"].where(show, ""), textposition=pos,
+                marker=dict(size=10, color=GREEN, line=dict(color=KHAKI, width=2)),
+                customdata=np.c_[u["group"], u["cites_records"]],
+                hovertemplate="%{customdata[0]}<br>seizure/trade ratio %{x:.2f}<br>priority "
+                              "%{y:.2f}%<br>%{customdata[1]:,} CITES records<extra></extra>"))
+            fig.update_xaxes(type="log", title="UNODC seizure share ÷ CITES legal-trade share (log)",
+                             tickvals=[0.3, 1, 3, 10, 30, 100, 300, 1000],
+                             ticktext=["0.3", "1", "3", "10", "30", "100", "300", "1,000"])
+            fig.update_yaxes(type="log", title="Share in priority permits (%, log)",
+                             tickvals=[0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10],
+                             ticktext=["0.05", "0.1", "0.2", "0.5", "1", "2", "5", "10"])
+            st.plotly_chart(plotly_layout(fig, 440, showlegend=False), use_container_width=True)
+            tbl = u[["group", "cites_records", "unodc_seizure_share", "cites_trade_share",
+                     "seizure_to_trade_ratio", "wildguard_priority_share", "listing_rule_top1"]]
+            st.dataframe(tbl.rename(columns={
+                "cites_records": "CITES records", "unodc_seizure_share": "UNODC seizure share",
+                "cites_trade_share": "CITES trade share", "seizure_to_trade_ratio": "seizure/trade",
+                "wildguard_priority_share": "WildGuard priority share",
+                "listing_rule_top1": "listing rule top 1%"}).style.format({
+                    "CITES records": "{:,.0f}", "UNODC seizure share": "{:.1%}",
+                    "CITES trade share": "{:.2%}", "seizure/trade": "{:.2f}",
+                    "WildGuard priority share": "{:.2%}", "listing rule top 1%": "{:.2%}"}),
+                hide_index=True, use_container_width=True)
+            st.caption("UNODC World Wildlife Crime Report 2024 (Fig. 2.1) against exporter-reported "
+                       f"CITES records 2015–2021. Unstable (fewer than 500 records): "
+                       f"{', '.join(uc['unstable_groups']) or 'none'}.")
+    if top50 is not None:
+        with st.expander("Check 3 in detail: the 50 records and their categories"):
+            cat = {"a": "recognised pattern", "b": "US law abroad", "c": "no apparent reason"}
+            st.dataframe(top50.assign(category=top50["category"].map(cat))[
+                ["category", "rule", "year", "taxon_display", "product_code", "quantity_std",
+                 "unit_group", "purpose", "source", "exporter", "importer", "appendix", "reasons"]]
+                .rename(columns={"taxon_display": "taxon", "product_code": "product",
+                                 "quantity_std": "quantity", "unit_group": "unit"}),
+                hide_index=True, use_container_width=True, height=400)
+            st.caption("Each taxon's highest-ranked priority record, 2015–2024.")
+
+    st.subheader("Where the flags concentrate")
     dims = {"Taxonomic class": ("by_class.csv", "class"),
-            "Product form": ("by_product_group.csv", "product_group"),
-            "Declared purpose": ("by_purpose.csv", "purpose"),
-            "Source": ("by_source.csv", "source"),
-            "Exporter (≥2,000 records)": ("by_exporter.csv", "exporter"),
-            "Importer (≥2,000 records)": ("by_importer.csv", "importer"),
-            "Taxon (≥500 records)": ("by_taxon_display.csv", "taxon_display"),
+            "Order": ("by_order_name.csv", "order_name"),
+            "Product": ("by_product_group.csv", "product_group"),
+            "Purpose": ("by_purpose.csv", "purpose"), "Source": ("by_source.csv", "source"),
+            "CITES Appendix": ("by_appendix.csv", "appendix"),
+            "Exporter (2,000+ records)": ("by_exporter.csv", "exporter"),
+            "Importer (2,000+ records)": ("by_importer.csv", "importer"),
+            "Route (1,000+ records)": ("by_route.csv", "route"),
+            "Taxon (500+ records)": ("by_taxon_display.csv", "taxon_display"),
             "Year": ("by_year.csv", "year")}
     dim = st.selectbox("Break down by", list(dims))
     fname, col = dims[dim]
     d = load_csv(f"cites_aggregates/{fname}")
     need(d, "CITES aggregates")
-    if col == "year":
-        d = d.sort_values("year")
-    else:
-        d = d.head(20).iloc[::-1]
-    labels = d[col].astype(str)
-    if col in ("exporter", "importer"):
-        labels = d[col].map(cname)
-    elif col == "purpose":
-        labels = d[col].map(lambda k: PURPOSE.get(k, k))
-    elif col == "source":
-        labels = d[col].map(lambda k: SOURCE.get(k, k))
-    elif col == "class":
-        labels = d[col].map(with_icon)
+    yrs = load_csv("cites_aggregates/by_year.csv")
+    overall = float((yrs["records"] * yrs["priority_share"]).sum() / yrs["records"].sum()) \
+        if yrs is not None else 0.01
+    if col == "route":
+        d = d.assign(route=d["exporter"].map(cname) + " → " + d["importer"].map(cname))
+    d = d.sort_values("year") if col == "year" else d.head(20).iloc[::-1]
+    labels = {"exporter": lambda s: s.map(cname), "importer": lambda s: s.map(cname),
+              "purpose": lambda s: s.map(lambda k: PURPOSE.get(k, k)),
+              "source": lambda s: s.map(lambda k: SOURCE.get(k, k)),
+              "class": lambda s: s.map(with_icon), "product_group": lambda s: s.map(product_label),
+              "appendix": lambda s: s.map(lambda k: APPENDIX_LABELS.get(k, k))}.get(
+        col, lambda s: s.astype(str))(d[col])
     fig = go.Figure(go.Bar(
         x=d["priority_share"] * 100, y=labels, orientation="h", marker_color=GREEN,
         customdata=d["records"], width=0.6,
-        hovertemplate="%{y}: %{x:.2f}% flagged of %{customdata:,} records<extra></extra>"))
-    fig.add_vline(x=1, line=dict(color="#898781", width=1))
-    fig.update_xaxes(title="Records in priority tier (%)")
+        hovertemplate="%{y}: %{x:.2f}% in priority permits, of %{customdata:,} records"
+                      "<extra></extra>"))
+    fig.add_vline(x=overall * 100, line=dict(color="#898781", width=1))
+    fig.update_xaxes(title="Records in priority permits (%)")
     st.plotly_chart(plotly_layout(fig, 40 + 26 * len(d), showlegend=False),
                     use_container_width=True)
-
-    u = load_csv("cites_unodc_consistency.csv")
-    val = load_json(config.OUTPUTS_DIR / "cites_validation.json")
-    if u is not None and val:
-        st.subheader("Consistency with independent seizure data (UNODC WWCR 2024)")
-        rho = val["unodc_consistency"]["spearman_vs_seizure_to_trade_ratio"]["wildguard_priority_share"]
+    st.caption(f"Share of each group's exporter-reported records that belong to a priority permit "
+               f"(the top 20 groups, or every year). Grey line: the share across all records, "
+               f"{overall:.2%}.")
+    cs = load_json(config.OUTPUTS_DIR / "cites_scoring_summary.json")
+    if cs:
         st.markdown(
-            f"Groups that are over-represented in global seizures relative to their legal trade "
-            f"volume should be flagged more often. Spearman ρ = **{rho['spearman_rho']}** "
-            f"(p = {rho['p_value']}, {len(u)} species groups, CITES 2015-2021).")
-        # label only the groups that stand apart; the rest are named on hover and in the table
-        show = (u["wildguard_priority_share"] >= 0.02) | (u["seizure_to_trade_ratio"] >= 5)
-        pos = np.where(u["group"] == "Carnivores", "bottom center", "top center")
-        fig = go.Figure(go.Scatter(
-            x=u["seizure_to_trade_ratio"], y=u["wildguard_priority_share"] * 100,
-            mode="markers+text", text=u["group"].where(show, ""), textposition=pos,
-            marker=dict(size=10, color=GREEN, line=dict(color=KHAKI, width=2)),
-            customdata=np.c_[u["group"], u["cites_records"]],
-            hovertemplate="%{customdata[0]}<br>seizure/trade ratio %{x:.2f}<br>flagged %{y:.2f}%"
-                          "<br>%{customdata[1]:,} CITES records<extra></extra>"))
-        fig.add_hline(y=1, line=dict(color="#898781", width=1))
-        fig.update_xaxes(type="log", title="UNODC seizure share ÷ CITES legal-trade share (log)",
-                         tickvals=[0.3, 1, 3, 10, 30, 100, 300, 1000],
-                         ticktext=["0.3", "1", "3", "10", "30", "100", "300", "1,000"])
-        fig.update_yaxes(type="log", title="WildGuard priority share (%, log)",
-                         tickvals=[0.2, 0.5, 1, 2, 5, 10, 20, 50],
-                         ticktext=["0.2", "0.5", "1", "2", "5", "10", "20", "50"])
-        st.plotly_chart(plotly_layout(fig, 460, showlegend=False), use_container_width=True)
-        st.caption("Directional consistency only - not a precision/recall claim. Grey line = "
-                   "uniform flagging (1%). Hover a point for its group.")
-        tbl = u[["group", "cites_records", "unodc_seizure_share", "cites_trade_share",
-                 "seizure_to_trade_ratio", "wildguard_priority_share"]].rename(columns={
-            "cites_records": "CITES records", "unodc_seizure_share": "UNODC seizure share",
-            "cites_trade_share": "CITES trade share", "seizure_to_trade_ratio": "seizure/trade ratio",
-            "wildguard_priority_share": "WildGuard priority share"})
-        st.dataframe(tbl.style.format({"CITES records": "{:,.0f}", "UNODC seizure share": "{:.1%}",
-                                       "CITES trade share": "{:.2%}", "seizure/trade ratio": "{:.2f}",
-                                       "WildGuard priority share": "{:.2%}"}),
-                     hide_index=True, use_container_width=True)
+            f"**Marine mammals traded between other countries** are "
+            f"{cs['priority_share_marine_mammal_non_us_importer']:.1%} of priority records but "
+            f"{cs['ranked_share_marine_mammal_non_us_importer']:.1%} of all ranked records. US "
+            "law restricts imports of marine-mammal products, so their flag cards carry a "
+            "warning that the pattern may reflect US law rather than risk.")
 
 
 PAGES = {"Overview": page_overview, "Review queue": page_queue,
-         "Check a shipment": page_check, "Does it work?": page_evaluation,
-         "Risk patterns": page_patterns}
+         "Check a record": page_check, "Does it work?": page_evaluation,
+         "What it flags": page_patterns}
 SLUGS = {"overview": 0, "queue": 1, "check": 2, "evaluation": 3, "patterns": 4}
+if "nav" not in st.session_state:
+    st.session_state["nav"] = list(PAGES)[SLUGS.get(st.query_params.get("page", ""), 0)]
 with st.sidebar:
     st.markdown("## 🐘 WildGuard")
-    choice = st.radio("Navigate", list(PAGES), label_visibility="collapsed",
-                      index=SLUGS.get(st.query_params.get("page", ""), 0))
+    choice = st.radio("Navigate", list(PAGES), key="nav", label_visibility="collapsed")
     st.caption("NUS-ISS PRS Practice Module · Group 37")
     ds = load_json(config.DATASETS_JSON)
     if ds:

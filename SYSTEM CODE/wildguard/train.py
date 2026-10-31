@@ -9,7 +9,8 @@ The design was chosen on 2011 (SYSTEM CODE/DESIGN_QUESTIONS.md, notebooks 08-14)
      commercial trade (C1); per line item and per shipment (C2); with bootstrap intervals;
   3. fixes the LEMIS confidence bands on the held-back year 2012;
   4. refits the ensembles on 2000-2014 for deployment (B1: performance falls with the gap
-     between training and scored years, notebook 13).
+     between training and scored years, notebook 13), and records where the full model's
+     scores fall among the deployment years' shipments (the app's "Check a record").
 
 Run:  python -m wildguard.train
 """
@@ -25,7 +26,9 @@ from . import config, plots
 from .evaluate import (band_report, best_f1_threshold, capture_curve, confidence_bands,
                        evaluate_scores, pr_auc_bootstrap, shipment_scores)
 from .features import FULL_FEATURES, SHARED_FEATURES, FeatureBuilder
-from .models import Ensemble, LogisticModel
+from .models import Ensemble, LogisticModel, tail_quantiles
+
+SCALE_PATH = config.OUTPUTS_DIR / "lemis_record_scale.json"
 
 LEMIS_COLS = ["shipment_id", "year", "month", "class", "genus", "taxon", "taxon_display",
               "common_name", "product_code", "product_group", "unit_group", "quantity_std",
@@ -66,6 +69,17 @@ def score_all(models, F, seed):
            "full_ensemble": full.score(F), "baseline:listing_rule": listing_rule_score(F, seed),
            "baseline:random": np.random.default_rng(config.RANDOM_STATE + seed).random(len(F))}
     return out
+
+
+def write_record_scale(full, F):
+    """Where one US declaration, scored by the full model as a shipment of its own, falls among
+    the deployment years' shipments (each scored by its highest line, as in C2): the
+    shipment-score quantiles and the cut-offs of the CITES queue's budgets, top 1% and next 4%."""
+    _, ship = shipment_scores(F["shipment_id"].to_numpy(), np.zeros(len(F)), full.score_single(F))
+    SCALE_PATH.write_text(json.dumps({
+        "years": [min(config.DEPLOY_YEARS), max(config.DEPLOY_YEARS)], "shipments": int(len(ship)),
+        "priority_cut": float(np.quantile(ship, 0.99)), "review_cut": float(np.quantile(ship, 0.95)),
+        "shipment_score": tail_quantiles(ship)}))
 
 
 def main():
@@ -166,6 +180,7 @@ def main():
     deployed = Ensemble(SHARED_FEATURES).fit(F_d, y_d)
     full_d = Ensemble(FULL_FEATURES).fit(F_d, y_d)
     full_d.set_reference(F_d.sample(min(len(F_d), 400_000), random_state=config.RANDOM_STATE))
+    write_record_scale(full_d, F_d)
     joblib.dump(deployed, config.MODELS_DIR / "deployed_ensemble.joblib", compress=3)
     joblib.dump(full_d, config.MODELS_DIR / "full_ensemble.joblib", compress=3)
     joblib.dump(fb_d, config.MODELS_DIR / "feature_builder_lemis.joblib", compress=3)

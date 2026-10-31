@@ -131,6 +131,16 @@ class PercentileRanker:
         return np.interp(s, self.grid, np.linspace(0, 1, 1001))
 
 
+# probabilities at which a population's scores are stored for placing one new score within it:
+# steps of 1% up to 95%, then of 0.01%, because the review tiers are the top 1% and 5%
+SCALE_GRID = np.r_[np.linspace(0, 0.94, 95), np.linspace(0.95, 1, 501)]
+
+
+def tail_quantiles(s):
+    """Quantiles of s on SCALE_GRID; np.interp(x, quantiles, SCALE_GRID) is x's percentile."""
+    return np.quantile(np.asarray(s, dtype=float), SCALE_GRID).round(7).tolist()
+
+
 # ---------------------------------------------------------------- supervised
 class Ensemble:
     """The chosen supervised model (B5-B6): XGBoost and a random forest, rank-averaged."""

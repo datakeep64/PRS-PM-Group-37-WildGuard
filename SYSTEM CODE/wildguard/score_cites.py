@@ -21,6 +21,8 @@ Outputs
     DATA/processed/cites_scored.parquet        every rule D record, scored or excluded (not in git)
     DATA/samples/cites_review_queue.parquet    flagged + sample records with reasons (app)
     SYSTEM CODE/outputs/cites_aggregates/*.csv risk concentration tables (app + report)
+    SYSTEM CODE/outputs/cites_record_scale.json per year: tier cut-offs and score quantiles, to
+                                               place one permit or new record in its year (app)
     SYSTEM CODE/models/cites_ensemble.joblib   the deployed ensemble with CITES percentile scales
 
 Run:  python -m wildguard.score_cites
@@ -35,11 +37,12 @@ import pandas as pd
 from . import cites_features, config
 from .explain import explain_rows, marine_mammal, peer_context, us_law_warning
 from .features import SHARED_FEATURES
-from .models import PeerDeviationScorer, percentile_rank
+from .models import PeerDeviationScorer, percentile_rank, tail_quantiles
 
 PRIORITY, REVIEW = 0.01, 0.05          # cumulative inspection budgets per year, in consignments
 AGG_DIR = config.OUTPUTS_DIR / "cites_aggregates"
 QUEUE_PATH = config.SAMPLES_DIR / "cites_review_queue.parquet"
+SCALE_PATH = config.OUTPUTS_DIR / "cites_record_scale.json"
 KEEP = ["shipment_id", "year", "class", "order_name", "family", "genus", "taxon", "taxon_display",
         "product_code", "product_group", "unit_group", "quantity_std", "purpose", "source",
         "origin", "exporter", "importer", "appendix", "reporter_type", "export_permit",
@@ -67,6 +70,27 @@ def consignment_tiers(df):
                          np.where(c["rank"] <= REVIEW * c["n"], "review", "routine"))
     tier = pd.Series(c["tier"].to_numpy(), index=c["key"]).reindex(key).to_numpy()
     return cons.to_numpy(), c_score, tier
+
+
+def write_record_scale(R):
+    """Per year, what the app needs to place one permit, or one new record scored as a permit
+    of its own, among the year's ranked permits: the consignment-score quantiles and tier
+    cut-offs, and each member's score quantiles (a new record's percentile ranks within the year,
+    as `Ensemble.score` computes them for the scored records)."""
+    key = R["year"].astype(str) + "|" + R["consignment"].astype(str)
+    first = ~key.duplicated().to_numpy()
+    out = {}
+    for y in sorted(R["year"].unique()):
+        rec = (R["year"] == y).to_numpy()
+        c = R[rec & first]
+        out[str(int(y))] = {
+            "permits": int(len(c)),
+            "priority_cut": float(c.loc[c["tier"] == "priority", "consignment_score"].min()),
+            "review_cut": float(c.loc[c["tier"] != "routine", "consignment_score"].min()),
+            "permit_score": tail_quantiles(c["consignment_score"]),
+            "xgboost": tail_quantiles(R.loc[rec, "score_xgboost"]),
+            "random_forest": tail_quantiles(R.loc[rec, "score_random_forest"])}
+    SCALE_PATH.write_text(json.dumps(out))
 
 
 def main():
@@ -106,6 +130,7 @@ def main():
     # percentile scales for scoring a single record in the app
     ensemble.set_reference(R.sample(min(len(R), 400_000), random_state=config.RANDOM_STATE))
     joblib.dump(ensemble, config.MODELS_DIR / "cites_ensemble.joblib", compress=3)
+    write_record_scale(R)
 
     # ----------------------------------------------------------------- review queue
     rng = np.random.default_rng(config.RANDOM_STATE)
