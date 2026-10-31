@@ -1,138 +1,155 @@
 # Final video presentation — recording guide
 
-**Target length:** 12–14 minutes (requirement: 10–15). **Format:** `.mp4`.
-**Content required:** describe the project fully, the methods, and the metrics used to evaluate
-its success; a demo is optional but included here.
+**Target length:** about 13 minutes (requirement: 10–15). **Format:** `.mp4`.
+**Content required:** the whole project, the methods, and the metrics used to judge its success; a
+demo of the app is included (slides 13–14).
+
+## The slides
+
+The deck is the Claude artifact **WildGuard Final Presentation**
+(https://claude.ai/artifact/BShBnjC8m2jY4b8oDkQhtM; private until shared from its Share menu). It has
+16 slides, and each slide's narration is in its speaker notes (reproduced below).
+Present it from the artifact page, or download it from the page's Share › Export menu as `.pptx`
+or `.pdf` and save the files here as `WildGuard_Final_Presentation.pptx` and
+`WildGuard_Final_Presentation.pdf`, replacing the 27 October versions.
 
 ## Run sheet
 
 | # | Slide | Time | Speaker |
 |---|---|---|---|
-| 1 | Title | 0:00–0:40 | |
-| 2 | The problem | 0:40–1:40 | |
-| 3 | How we got here | 1:40–2:30 | |
-| 4 | The idea: LEMIS labels, CITES scale | 2:30–3:30 | |
-| 5 | Schema alignment | 3:30–4:30 | |
-| 6 | System design | 4:30–5:40 | |
-| 7 | Techniques mapped to the module | 5:40–6:30 | |
-| 8 | Does it work? | 6:30–7:40 | |
-| 9 | What an inspection budget buys | 7:40–8:40 | |
-| 10 | Hybrid vs parts | 8:40–9:30 | |
-| 11 | Does it transfer? | 9:30–10:30 | |
-| 12 | What it surfaces in CITES | 10:30–11:30 | |
-| 13 | Demo (live app) | 11:30–13:00 | |
-| 14 | Limitations | 13:00–13:40 | |
-| 15 | Conclusion | 13:40–14:20 | |
+| 1 | WildGuard | 0:00–0:34 | |
+| 2 | More trade than anyone can inspect | 0:34–1:16 | |
+| 3 | LEMIS has the outcomes; CITES has the scale | 1:16–1:56 | |
+| 4 | Two datasets, one shared schema | 1:56–2:40 | |
+| 5 | Learn where outcomes exist, rank where they do not | 2:40–3:26 | |
+| 6 | Nothing is tuned on the years it is judged on | 3:26–4:10 | |
+| 7 | Every model choice made by comparison | 4:10–4:55 | |
+| 8 | The one test: US imports 2013–2014, never seen | 4:55–5:39 | |
+| 9 | What an inspection budget buys | 5:39–6:17 | |
+| 10 | What helped, and what did not | 6:17–7:06 | |
+| 11 | From CITES records to a review queue | 7:06–7:53 | |
+| 12 | Checked against outside evidence: one pass, two fails | 7:53–8:47 | |
+| 13 | The review queue | 8:47–10:06 | |
+| 14 | Check any record, see the evidence | 10:06–11:15 | |
+| 15 | Limits, stated plainly | 11:15–12:02 | |
+| 16 | What WildGuard shows | 12:02–12:52 | |
 
-Fill in the speaker column to split the narration between the two of you. The narration for
-every slide is in the speaker notes of `WildGuard_Final_Presentation.pptx` and is reproduced
-below.
+Timings assume about 140 words a minute, plus half a minute of screen time on each demo slide.
+Fill in the speaker column to split the narration between the two of you.
 
 ## Recording options
 
-* **PowerPoint:** *Slide Show → Record → From Beginning*. Narrate over the slides, then
-  *File → Export → Create a Video* (1080p). For the demo, record the app separately (below) and
-  insert the clip on slide 13 with *Insert → Video*.
+* **PowerPoint** (after downloading the `.pptx`): *Slide Show → Record → From Beginning*. Narrate
+  over the slides, then *File → Export → Create a Video* (1080p). For the demo, record the app
+  separately (below) and insert the clip on slides 13–14 with *Insert → Video*.
 * **Zoom:** start a meeting with yourself, share the screen, *Record → Record on this computer*.
   Zoom writes an `.mp4` when the meeting ends. Two presenters can join the same meeting.
 * **macOS:** press ⌘⇧5, choose *Record Entire Screen* and enable the microphone under *Options*.
 
-## Demo segment (about 90 seconds)
+## Demo segment (slides 13–14, about 2½ minutes)
 
-Start the app before recording:
+Start the app before recording (or use the hosted app once the latest version is deployed):
 
 ```bash
 source .venv/bin/activate
 streamlit run "SYSTEM CODE/app/app.py"
 ```
 
-1. **Review queue** (`http://localhost:8501/?page=queue`). Show the ranked list. Filter the class
-   to *Reptilia* or search a taxon such as *Psittacus*. Click a row and walk through its flag
-   card: the record, the *Why flagged* reasons, and the four signals.
-2. **Check a shipment** (`?page=check&example=tortoise`). The Indian star tortoise case opens
-   already scored: two live wild tortoises, declared as personal imports from Malaysia at $400
-   each. Point out the reasons (purpose, quantity against peers, unit value), then mention it was
-   actually seized. Note on camera that this case is from a training year, so it is an
-   illustration, not a test result.
-3. **Does it work?** (`?page=evaluation`). Drag the budget slider from 1% to 10% and read off
-   *cases caught* against random. Switch to *Commercial purpose only* to show the harder subset.
-4. **Risk patterns** (`?page=patterns`). Show *Product form*, then scroll to the UNODC
-   consistency chart.
+1. **Review queue** (`http://localhost:8501/?page=queue`). The list opens on 2024's priority permits.
+   Open *More filters* and tick *Only permits reported by both countries*: the first permit is
+   sperm-whale carvings from Greenland to Denmark. Walk down its flag card: tier and rank in the
+   year, *Why flagged*, *How unusual for its peers*, the US-law warning, and *On this permit*, where
+   the two countries' reports disagree (carvings against teeth). Untick the filter and type
+   *Crocodylus siamensis* in *Search taxon* to show the Thailand → Japan leather permits: the pattern
+   that fills half the priority tier.
+2. **Check a record** (`?page=check&example=saiga`). The saiga-antelope medicine record opens already
+   ranked: priority, top 0.01% of 2019 permits, with its reasons. Optionally show
+   `?page=check&example=tortoise`: the US-declaration form with value, port and month (a
+   training-year case, so an illustration, not a test result).
+3. **Does it work?** (`?page=evaluation`). Drag the budget slider from 1% to 10% and read off the cases
+   found against random inspection and the listing rule. Switch *Shipments* to *Commercial imports*
+   to show the harder subset, and mention the note that XGBoost alone scored slightly higher.
+4. Optional, **What it flags** (`?page=patterns`): the three checks, one pass and two fails, as they
+   are.
 
 ## Narration (from the speaker notes)
 
-### Slide 1 · Title  
-*≈0.7 min at 140 words/min*
+### Slide 1 · WildGuard  
+*≈0.6 min*
 
-Hello, we are Group 37 and this is WildGuard. In one sentence: WildGuard takes what US wildlife inspectors actually decided about 5.5 million import declarations, learns the patterns that preceded enforcement action, and uses them to rank the much larger, unlabelled global CITES trade database so that human reviewers know where to look first. Over the next twelve minutes we will cover the problem, how our direction changed after the first presentation, the system we built, how well it works on held-out data, how it behaves when applied to CITES, a short demo, and its limitations.
+Hello, we are Group 37, and this is WildGuard. WildGuard learns from what US wildlife inspectors actually did with millions of import declarations, and uses those patterns to rank the much larger, unlabelled global CITES trade database, so that reviewers know where to look first. We will cover the problem, the idea, how we aligned the data and chose every model, the results of one held-out test, what the system finds in CITES, a short demo, and its limits.
 
-### Slide 2 · The problem: more trade than anyone can inspect  
-*≈0.9 min at 140 words/min*
+### Slide 2 · More trade than anyone can inspect  
+*≈0.7 min*
 
-Why is this a pattern-recognition problem? First, scale: the CITES Trade Database we downloaded holds over 29 million trade records since 1975, and about 800 thousand new animal-trade records arrive every year. No team can review them one by one. Second, the risk signal is rarely in a single field. It sits in combinations: species, product form, quantity, purpose, source and route, relative to what is normal for that species. That is exactly what pattern recognition is good at. Third, the need is officially recognised: the CITES Secretariat and the World Customs Organization developed guidance on risk assessment and inspections for CITES trade controls, taken forward at CoP20 in December 2025, but risk targeting is still done largely by hand, officer by officer.
+Why is this a pattern-recognition problem? First, scale: the CITES Trade Database holds over 29 million records, and about 800 thousand new animal-trade records arrive every year, so inspections must be targeted by risk, as the CITES and World Customs Organization guidance asks. Second, the signal is rare: only 1.7 percent of US import line items ever drew enforcement action. Third, it is not in one field. Two live tortoises look ordinary until you compare them with their peers: the purpose, the price and the route make them stand out. Finding such combinations is what pattern recognition is for.
 
-### Slide 3 · How we got here: from image fusion to label transfer  
-*≈0.7 min at 140 words/min*
+### Slide 3 · LEMIS has the outcomes; CITES has the scale  
+*≈0.7 min*
 
-At the first presentation we explained why we dropped our original proposal, which fused CITES records with pangolin images. Briefly: the image stream covered one species while the records covered all of them, so missing images would have distorted scores; it would mostly have re-discovered what is already known; and the image data was never accessible - the dataset request went unanswered and synthetic augmentation would have created a synthetic-to-real gap. The new direction keeps one modality, structured trade records, and uses two large, real, freely available datasets that complement each other.
+Two public datasets fill each other’s gaps. LEMIS is the US Fish and Wildlife Service record of every wildlife import from 2000 to 2014, and for each line item it says what inspectors did: cleared it, or refused, seized, abandoned or re-exported it. Those are labels, for one country. The CITES Trade Database covers every Party but has no enforcement outcome. WildGuard learns the patterns that preceded enforcement in LEMIS and ranks CITES records with them. Six research questions guide the work: alignment, prediction, usefulness, combining evidence, transfer, and plausibility on CITES.
 
-### Slide 4 · The idea: LEMIS has the labels, CITES has the scale  
-*≈0.7 min at 140 words/min*
+### Slide 4 · Two datasets, one shared schema  
+*≈0.7 min*
 
-LEMIS is the US Fish and Wildlife Service's record of every wildlife import declaration: 5.5 million line items from 2000 to 2014, each with what inspectors actually did - cleared, refused, seized, abandoned or re-exported. That gives us labels, but only for the United States. CITES covers every country but has no enforcement labels; the illegal-trade database is access-restricted. The two complement each other's gap, and because the US builds its CITES reports from the same kind of declarations, their codes line up. WildGuard learns on LEMIS and applies what it learned to CITES.
+First the data had to describe the same trade the same way: our knowledge-modelling step. Some codes look identical but are not: pre-Convention is source P in LEMIS and O in CITES; reintroduction is purpose Y in one and N in the other. Products are grouped by what the object is, for example one leather group for small goods, large goods and shoes. LEMIS has no CITES appendix, so for each shipment we look up the listing in force that year. Fields only LEMIS has, declared value, port and month, stay out; they are worth 0.035 PR-AUC, which is what alignment gives up.
 
-### Slide 5 · Making two datasets speak the same language  
-*≈0.8 min at 140 words/min*
+### Slide 5 · Learn where outcomes exist, rank where they do not  
+*≈0.8 min*
 
-Schema alignment is our knowledge-modelling step. LEMIS writes product forms as three-letter codes, CITES as English terms; units differ; LEMIS has no CITES appendix. We built a crosswalk into 31 shared product groups and six unit groups, converted quantities, and looked up each LEMIS taxon's CITES appendix. Source and purpose codes are identical letter codes in both. To check the alignment we trained a classifier to tell LEMIS records from the records the US itself reported to CITES for the same years. Its AUC was 0.771 for CITES-listed taxa, against 0.967 for global CITES trade - so the mapping is consistent, and the remaining difference is real distribution shift.
+Here is the system in two lanes. In the LEMIS lane, where labels exist, we select animal line items, align them, describe each record against its peers, and train two models, XGBoost and a random forest. They are tested once, on 2013 and 2014, then refit on all fifteen years. Three things cross to the CITES lane: the crosswalk, the peer norms and the deployed models. Each CITES trade is scored once, records are grouped into export permits, and each year’s permits are ranked into a priority tier, the top one percent, and a review tier, the next four. The CITES lane is checked against outside evidence.
 
-### Slide 6 · System design  
-*≈0.9 min at 140 words/min*
+### Slide 6 · Nothing is tuned on the years it is judged on  
+*≈0.7 min*
 
-Here is the whole system. The top lane is LEMIS, where everything is trained and evaluated with real labels. Records are aligned, then described by relative features - how far a record sits from the norm for its own peer group of genus, product and unit, and how rare its route, purpose and source are. An XGBoost model learns from outcomes; three unsupervised detectors - a peer-deviation score, an Isolation Forest and K-Means distance - score anomalies without labels; a stacked meta-learner combines all four. The bottom lane is CITES. The same mapping is applied, peer norms are re-learned from CITES itself, the trained model and combiner weights are transferred, the label-free detectors are re-fitted on CITES, and every record is ranked into review tiers with plain-language reasons.
+Only LEMIS has outcomes, so the evaluation lives there, and we controlled which years each step may see. Training uses 2000 to 2010, tuned by time-ordered cross-validation inside those years. Every design choice was made on 2011; 2012 was held back; 2013 to 2014 are the one test, scored once. The deciding metric is PR-AUC on CITES-listed species, the part of LEMIS most like CITES; with under two percent positives, accuracy would reward clearing everything. Effort is counted in shipments, what an inspector opens, with 95 percent intervals from a bootstrap of whole shipments, against random inspection and a “most endangered first” rule.
 
-### Slide 7 · Pattern-recognition techniques, mapped to the module  
-*≈0.6 min at 140 words/min*
+### Slide 7 · Every model choice made by comparison  
+*≈0.8 min*
 
-The module asks for at least three of four aspects. We fully cover three of them, and add a sense-making layer on top. Supervised and unsupervised learning: XGBoost, Random Forest and Logistic Regression on outcomes, plus three label-free detectors. Machine-learning techniques: gradient boosting, bagging, clustering with silhouette-based model selection, and isolation-based outlier detection. Hybrid and ensemble: the tree ensembles themselves, and a stacked meta-learner that combines supervised and unsupervised evidence. Sense-making: turning scores into decisions a person can act on - TreeSHAP explanations on every flag, confidence-aware triage bands, and risk-pattern analytics.
+Every piece was chosen by comparison, with its decision rule written before its result. Six supervised candidates, from logistic regression to XGBoost, were compared in five configurations each. The random forest and XGBoost tied on 2011; our rule sent ties to the simpler model, but we broke this one on deployment cost, because the forest was far larger for the hosted app, and we report that openly. Forward selection then added a random forest to XGBoost and stopped: none of five unsupervised detectors helped. Features, transfer, training years and the review unit were decided the same way, and only then did we run the one test.
 
-### Slide 8 · Does it work? Held-out LEMIS shipments, 2013-2014  
-*≈0.9 min at 140 words/min*
+### Slide 8 · The one test: US imports 2013–2014, never seen  
+*≈0.7 min*
 
-Because only LEMIS has ground truth, the rigorous test happens there. We trained on 2000 to 2010, tuned on 2011 and 2012, and scored 2013 and 2014, which the system had never seen. Accuracy would be meaningless here: only 1.6 percent of test line items were enforcement cases, so clearing everything scores 98 percent. Instead we ask an inspector's question. If you can only inspect the top 5 percent, WildGuard catches 70% of the real enforcement cases, versus 5 percent at random. Among its top 1 percent of flags, 79% were real cases. To catch 80 percent of cases you inspect 13% of shipments instead of 80 percent. And this is the transfer model - it uses only fields CITES also has.
+Here is the one test, on 2013–2014 US imports of CITES-listed species, never seen before. WildGuard reaches a PR-AUC of 0.540 per line item, 27 times random, and 0.643 per shipment. The obvious manual rule, most endangered species first, scores 0.026: listing status alone is not the signal; combinations are. Every learned model beats both baselines widely. One result went against our design: XGBoost alone scored 0.006 higher than the ensemble, a small but real difference, after the ensemble had led on 2011. We kept the design and report it, because changing the model after the test would make the test meaningless.
 
 ### Slide 9 · What an inspection budget buys  
-*≈0.7 min at 140 words/min*
+*≈0.6 min*
 
-This curve is the usability argument. The x-axis is how much of the flow you inspect, highest score first; the y-axis is the share of real enforcement cases you catch. WildGuard in blue climbs steeply; the grey diagonal is random inspection; the green line is the obvious manual rule - inspect the most endangered, wild-caught species first - which barely beats random. On the right are confidence-aware bands with thresholds fixed on the validation years: 56% of shipments could be auto-cleared while missing only 7% of cases, and a priority band of 2% of shipments holds 60% of all cases.
+This curve is the usability argument. Along the bottom, the share of shipments inspected, highest score first; up the side, the share of shipments with an enforcement case found. With a five percent budget, WildGuard finds 63 percent of the cases, against five for random inspection and six for the listing rule. Finding 80 percent takes 21 percent of shipments instead of 80. And 99 of every 100 shipments in the top one percent really had a case. Commercial trade is harder; we return to that among the limits.
 
-### Slide 10 · Hybrid beats either part alone - but unusual is not illegal  
-*≈0.6 min at 140 words/min*
+### Slide 10 · What helped, and what did not  
+*≈0.8 min*
 
-Does combining supervised and unsupervised evidence help? On the same held-out years, the unsupervised detectors alone reach a PR-AUC of 0.050 - about three times random, but far from useful on their own, because a lot of perfectly legal trade is unusual. The supervised model alone reaches 0.588, and the stacked hybrid 0.599. The gain is modest but consistent, and it appears in both the transfer and full variants. The meta-learner gives the Isolation Forest the largest anomaly weight. XGBoost also clearly beat Random Forest and Logistic Regression.
+What helped? We tested five unsupervised detectors, including Isolation Forest, K-Means and DBSCAN. Each ranks cases above random, but none improved the supervised models, because much legal trade is simply unusual: the answer to RQ4 is no for unsupervised evidence. Combining two supervised models gained a little on 2011 and lost a little on the test. Class weights, the usual fix for imbalance, made the ranking worse. On transfer: trained without a world region, the ensemble still worked there, for all five regions. But it ages with the gap to the scored year, so the deployed model is refit on all fifteen years. And differences in law cannot be measured without labels outside the US.
 
-### Slide 11 · Does it transfer? A simulated shift we can actually score  
-*≈1.0 min at 140 words/min*
+### Slide 11 · From CITES records to a review queue  
+*≈0.8 min*
 
-CITES has no labels, so we cannot score transfer to CITES directly. Instead we simulated it inside LEMIS: we trained without any shipments exported from Asia, then tested on held-out Asia shipments. In-domain the model reaches 0.592. Naive transfer to the unseen region drops to 0.539. Re-learning the peer norms from unlabelled target data - exactly what we do for CITES - gives 0.528. Importance weighting gives 0.546. Adding just 1 percent of target labels gives 0.542, and a model trained on all target labels reaches 0.616. Importance weighting looked best in this simulation, but on held-out LEMIS records of CITES-listed species - the records most like CITES - it lowered PR-AUC from 0.630 to 0.600, so the deployed model is unweighted. The lesson: a few real target labels beat any label-free adaptation trick.
+Now CITES. Of 8.2 million animal records from 2015 to 2024, we count each trade once, and set aside records already marked as confiscated, since flagging what is already seized adds nothing. That leaves 5.5 million records on 3.3 million export permits. A reviewer opens a permit, not a line, so a permit takes its highest record’s score, and permits are ranked within each year, because recent reports arrive late. Below is a real 2024 permit, crocodile leather from France to China, in the priority tier. One lesson: anonymised permit IDs also occur on unrelated trades, so a permit is identified by its ID, exporter, importer and year.
 
-### Slide 12 · What WildGuard surfaces in CITES, 2015-2024  
-*≈1.0 min at 140 words/min*
+### Slide 12 · Checked against outside evidence: one pass, two fails  
+*≈0.9 min*
 
-We scored 8.25 million CITES animal-trade records. Records already marked as confiscated were set aside - flagging what has already been seized adds nothing - and the rest were ranked each year into tiers: priority is the top 1 percent, review the next 4 percent. On the left is where the priority tier concentrates by product form: horn, shells, ivory, teeth and bone. Without labels we make no accuracy claim here; instead we ran two independent checks. First, against UNODC's World Wildlife Crime Report 2024: species groups that are over-represented in global seizures relative to their legal trade should be flagged more often - the rank correlation is 0.864 with p of 0.0001. Second, CITES marks confiscated specimens with source code I. A version of the model that never sees the source field still ranks those records higher than the rest, with an AUC of 0.874.
+CITES has no outcomes, so we fixed three checks and their pass marks in advance, and report them as they came out. The UNODC check fails: groups over-represented in seizures are not clearly flagged more often. It had passed earlier, but only through three pangolin records that a permit-ID collision put in the priority tier; once we fixed the grouping, it failed. The confiscated-specimen check passes: without any source information, the model still ranks confiscated specimens far above the rest. The top-fifty check fails: thirty percent show no recognised pattern. And the biggest finding: half of the priority tier is Siamese crocodile leather, legal under CITES but refused by the US 95 percent of the time. WildGuard ranks trade by how US enforcement would treat it.
 
-### Slide 13 · Demo: the WildGuard review tool  
-*≈0.9 min at 140 words/min*
+### Slide 13 · The review queue  
+*≈1.3 min*
 
-Now a short demo of the MVP, a Streamlit app. The review queue lists CITES records ranked for review; selecting one opens a flag card with the record, the reasons it was flagged, and the four signals behind the score. The 'Check a shipment' page scores any record - here the real Indian star tortoise case from LEMIS: two live wild tortoises declared as a personal import from Malaysia at 400 dollars each, where 99 percent of comparable imports were commercial lots of around ten animals at a median of 35 dollars each. It was seized. The 'Does it work?' page lets you move an inspection budget and see how many real cases you would catch.  [Switch to the live app for the demo segment.]
+[Switch to the live app, Review queue.] The tool is for a CITES or customs reviewer with limited time. The queue opens on this year’s priority permits. Selecting one opens its flag card: first its tier and rank in the year, never a probability, because on CITES the score is a ranking. Then why it was flagged, in plain language, and how unusual it is for its peers. Here, sperm-whale carvings from Greenland to Denmark: both countries reported the permit, and their reports disagree, carvings against teeth. And a warning: the pattern may reflect US law, because the Marine Mammal Protection Act bans such imports and this trade does not involve the US. The reviewer decides; WildGuard says where to look first.
 
-### Slide 14 · Limitations, stated plainly  
-*≈1.1 min at 140 words/min*
+### Slide 14 · Check any record, see the evidence  
+*≈1.1 min*
 
-Some honest limitations. First, a flag is not evidence of crime: our labels are enforcement outcomes, which include paperwork refusals, and absolute probabilities do not carry over to CITES, so there we rank by budget. Second, LEMIS ends in 2014 and reflects US enforcement priorities. Third, half of LEMIS cases are personal imports, while CITES is mostly commercial; on commercial shipments alone the model is weaker. Fourth, country features can encode where enforcement has looked before, so flags must stay a prompt for human review, never an automatic decision. Some labels reflect US law rather than CITES rules: marine-mammal products are refused ten times more often in LEMIS, consistent with the US Marine Mammal Protection Act, and the model carries that into trade between other countries where it may be lawful. Finally, the full model may slightly overstate performance because a zero declared value is more common in refused shipments; the deployed transfer model does not use value at all.
+[Live app, Check a record.] A reviewer can also check one record. Saiga-antelope medicine from China to Japan ranks in the top 0.01 percent of 2019 permits, with its reasons: an unknown origin, a medicine product, an unusual source. A US declaration can add value, port and month. [Switch to Does it work?] For anyone deciding whether to trust the tool, this page shows the one test: drag the budget and read off how many real cases a team would find, against random and the listing rule. Every page puts the answer first and keeps the technical evidence one click below.
 
-### Slide 15 · Conclusion  
-*≈0.9 min at 140 words/min*
+### Slide 15 · Limits, stated plainly  
+*≈0.8 min*
 
-To conclude. Enforcement knowledge does transfer: using only fields CITES also has, inspecting five percent of held-out shipments catches 70% of real enforcement cases. Combining supervised and unsupervised evidence helps a little, and every learned model beats the obvious manual rule by a wide margin. The enabling step was unglamorous - aligning two public datasets so they speak one language. On CITES, where no labels exist, the ranking is directionally consistent with independent seizure statistics, which is the honest claim we can make: WildGuard is a triage aid for human reviewers, not a verdict. Next steps would be a small labelled sample from a CITES authority, newer LEMIS data, reporting mismatches as an extra signal, and a feedback loop from analysts. Thank you.
+Some limits, stated plainly. A flag is a prompt, not proof: our labels are what US inspectors did, and most stopped shipments never reach CITES, so a flag means a record resembles trade that was stopped in the US. US law travels with the labels, as Siamese crocodile and marine mammals show, and only marine mammals carry a warning. Commercial trade is much harder, and CITES is mostly commercial. The labels end in 2014, and the ranking ages. We make no accuracy claim on CITES; two of three checks fail. And permit signals can be shown to a reviewer but not learned. So every flag goes to a person.
 
+### Slide 16 · What WildGuard shows  
+*≈0.8 min*
+
+To conclude. Enforcement knowledge partly transfers: using only fields both datasets share, inspecting five percent of held-out US shipments finds 63 percent of the cases, where the manual rule finds six. The enabling work was unglamorous: aligning two public datasets and choosing every model by a comparison whose rule was written first. On CITES the ranking shows its origin: it finds confiscated specimens it was never told about, but not the UNODC seizure pattern, and much of what it flags is trade US law prohibits. So WildGuard is a triage aid, not a verdict. Next would be a labelled sample from a CITES authority, warnings for every US prohibition, and a rebuild with each CITES release. Thank you.
