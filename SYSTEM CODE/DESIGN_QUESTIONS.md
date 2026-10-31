@@ -670,7 +670,8 @@ transfer check: on no held-out region is it significantly worse than XGBoost alo
    a rank average with no weights.) *Done, 31 October 2026 (notebooks 13–14 and your choices).*
    **Every design question is now decided.**
 7. **B10:** final fit, transfer check, the one test. Rerun notebooks 04 and 05 on the rebuilt
-   features.
+   features. *The one test and the deployment refit ran on 31 October 2026 (pipeline, Part D);
+   notebooks 04 and 05 still to rerun.*
 8. **Report:** the flow diagram and §4 from Parts A and B and the decisions; §6 from Part C.
 
 ---
@@ -728,3 +729,4 @@ checked before the next.
 | S5.2 Reasons | XGBoost's contributions, with the peer-deviation signal beside them | 31 October 2026 | Choice |
 | S6.2 Flag card | Context only: the consignment's records and both countries' reports | 31 October 2026 | Choice |
 | S6.3 US-specific taxa | Warning on the flag card | 31 October 2026 | Choice |
+| B10 The one test | Ensemble kept as decided: on 2013–2014 it scored PR-AUC 0.540 on listed line items, 0.006 below XGBoost alone (interval −0.009 to −0.003), with equal recall at the review budgets. Not revisited, so the test stays untouched; the report states it | 31 October 2026 | `outputs/lemis_evaluation.json` |
