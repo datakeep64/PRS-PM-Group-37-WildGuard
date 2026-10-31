@@ -11,3 +11,7 @@ DATA/processed/
 
 # Office lock files
 ~$*
+
+# Pipeline intermediates rebuilt by train.py (the app uses cites_ensemble and full_ensemble)
+SYSTEM CODE/models/deployed_ensemble.joblib
+SYSTEM CODE/models/tested_ensemble.joblib

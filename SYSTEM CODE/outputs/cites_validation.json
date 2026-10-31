@@ -1,30 +1,35 @@
 {
   "unodc_consistency": {
     "n_groups": 14,
-    "spearman_vs_seizure_to_trade_ratio": {
-      "wildguard_priority_share": {
-        "spearman_rho": 0.864,
-        "p_value": 0.0001
-      },
-      "supervised_only_top1": {
-        "spearman_rho": 0.868,
-        "p_value": 0.0001
-      },
-      "unsupervised_only_top1": {
-        "spearman_rho": 0.846,
-        "p_value": 0.0001
-      },
-      "listing_rule_top1": {
-        "spearman_rho": 0.334,
-        "p_value": 0.2425
-      }
-    }
+    "spearman_rho_wildguard": 0.543,
+    "permutation_p_one_sided": 0.0245,
+    "spearman_rho_listing_rule": 0.429,
+    "unstable_groups": [
+      "Pangolins"
+    ],
+    "pass": true
+  },
+  "top_records_for_review": {
+    "records": 50,
+    "file": "cites_top50_review.csv",
+    "pass_rule": "at least half in (a) and at most a fifth in (c), per reviewer"
   },
   "confiscated_proxy": {
-    "n_source_I": 32959,
-    "share_source_I": 0.003996438502633595,
-    "auc_no_source_transfer_model": 0.8739,
-    "auc_random": 0.5009,
-    "share_of_source_I_in_top_5pct": 0.6872781334385145
+    "features_removed": [
+      "source",
+      "is_wild",
+      "source_share_in_genus",
+      "combo_rarity"
+    ],
+    "n_source_I": 32750,
+    "roc_auc": 0.8884,
+    "low_95": 0.8864,
+    "high_95": 0.8906,
+    "share_of_source_I_in_top_5pct": 0.6613,
+    "pass": true
+  },
+  "marine_mammal_non_us_importer": {
+    "share_of_priority_records": 0.0758548380194291,
+    "share_of_ranked_records": 0.003931310377027448
   }
 }
