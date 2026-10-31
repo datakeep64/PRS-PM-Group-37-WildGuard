@@ -421,7 +421,8 @@ imbalance handling to test.* RQ2.
     report's existing headline metric.
 - **Consequence for notebook 04:** it chose the training population on recall at 1%. When it is
   rerun on the rebuilt data (Part C), it is also judged on PR-AUC, and the report says that the
-  metric changed and why.
+  metric changed and why. *Rerun 31 October 2026:* with PR-AUC the rule picks C instead of B
+  (notebook 04, P2); B is kept (Decisions).
 
 **B5 Choosing among the supervised candidates.** *Decided: XGBoost* (31 October 2026, notebook
 10). RQ2. On listed 2011 line items random forest (PR-AUC 0.570) and XGBoost (0.565) were tied
@@ -539,6 +540,12 @@ Settled:
   (B4). Before the rerun, `notebooks/experiment_setup.py` should read the appendix, `animal`,
   `sp_listed` and `rule_d` from the rebuilt aligned files instead of deriving them: it still uses
   the old genus fallback (notebook 06, G6) and maps CITES codes back to LEMIS ones.
+  *Done 31 October 2026,* after the one test: both notebooks rerun with the B5 XGBoost settings;
+  notebook 04 evaluated on 2011 with early stopping on 2012, so the test years stay used once.
+  Rule D holds, with the lowest cost in all four cases (notebook 05, M7). Population B holds under
+  the rule as written (recall at 1%), but the same rule with PR-AUC picks C, listed species only
+  (+0.007 on listed 2011 line items; notebook 04, P2). B is kept because the one test had already
+  run on it; the report states the result (Decisions).
 
 **C1 Which held-out sets are reported, and which answers RQ2.** *Decided* (31 October 2026). RQ2.
 - Why open: the headline PR-AUC (0.599) is on all LEMIS test records, where personal imports are
@@ -674,7 +681,7 @@ transfer check: on no held-out region is it significantly worse than XGBoost alo
    **Every design question is now decided.**
 7. **B10:** final fit, transfer check, the one test. Rerun notebooks 04 and 05 on the rebuilt
    features. *The one test and the deployment refit ran on 31 October 2026 (pipeline, Part D);
-   notebooks 04 and 05 still to rerun.*
+   notebooks 04 and 05 were rerun the same day (Decisions).*
 8. **Report:** the flow diagram and §4 from Parts A and B and the decisions; §6 from Part C.
 
 ---
@@ -694,8 +701,8 @@ checked before the next.
 | D6 | `wildguard/validate_cites.py` | The three checks of C7 with their pass criteria; the top 50 records exported for the two-person review |
 | D7 | `wildguard/domain_shift.py` | The shift measurements of C4: regional transfer of the ensemble, ageing, the domain classifier on raw fields against rule D's records, PSI per feature, a PCA projection (B9) |
 | D8 | `wildguard/analysis.py`, `explain.py` | Calibration and worked examples on the new ensemble; reason texts for `genus_listed`, the US-law warning and the peer context |
-| D9 | `app/app.py` | Only what the new outputs require, so the app runs; the interface itself changes after your instructions |
-| D10 | `run_pipeline.sh`, notebooks 04–05 | The step order; rerun notebooks 04 and 05 on the rebuilt data as the check of Part C |
+| D9 | `app/app.py` | Only what the new outputs require, so the app runs; the interface itself changes after your instructions. *Done 31 October 2026:* five pages after the interface choices (Decisions); `score_cites.py` and `train.py` also write `cites_record_scale.json` and `lemis_record_scale.json`, so one permit or record can be placed in its year |
+| D10 | `run_pipeline.sh`, notebooks 04–05 | The step order; rerun notebooks 04 and 05 on the rebuilt data as the check of Part C. *Done 31 October 2026* (Decisions) |
 
 ## Decisions
 
@@ -733,5 +740,8 @@ checked before the next.
 | S6.2 Flag card | Context only: the consignment's records and both countries' reports | 31 October 2026 | Choice |
 | S6.3 US-specific taxa | Warning on the flag card | 31 October 2026 | Choice |
 | C7 Check 3 method | The categories applied by a stated rule instead of two human reviewers | 31 October 2026 | Team time; decided before the classification was seen |
-| C7 Check 3 result | Fails: 62% (a), 8% (b), 30% (c), against at most 20% (c). All 15 (c) records are personal-purpose imports of wild Appendix II specimens (11 into the US, 4 into New Zealand), a pattern US enforcement acts on (personal imports refused 25.5% in LEMIS) but not one of C7's recognised patterns. Reported as a fail, not re-ruled | 31 October 2026 | `outputs/cites_top50_review.csv`, `cites_validation.json` |
+| C7 Check 3 result | Fails: 62% (a), 8% (b), 30% (c), against at most 20% (c). All 15 (c) records are personal-purpose imports of wild Appendix II specimens (12 into the US, 3 into New Zealand; corrected on 31 October 2026 from "11 and 4", which did not match the output), a pattern US enforcement acts on (personal imports refused 25.5% in LEMIS) but not one of C7's recognised patterns. Reported as a fail, not re-ruled | 31 October 2026 | `outputs/cites_top50_review.csv`, `cites_validation.json` |
 | B10 The one test | Ensemble kept as decided: on 2013–2014 it scored PR-AUC 0.540 on listed line items, 0.006 below XGBoost alone (interval −0.009 to −0.003), with equal recall at the review budgets. Not revisited, so the test stays untouched; the report states it | 31 October 2026 | `outputs/lemis_evaluation.json` |
+| Interface (D9) | Five pages, each answering one question with the technical detail in expanders; the review queue lists permits beside a flag card; risk shown as tier and rank in the year, not as a probability; one "Check a record" form, with optional US declaration fields that switch to the full model | 31 October 2026 | User's choices |
+| Notebook 05 rerun (Part C) | Rule D holds: the lowest review effort lost in all four cases (three of four in the first run). The link between the two reports disagreeing and the model's risk largely disappears (M8: 11.9% vs 9.9%, first run 33.3% vs 9.8%) | 31 October 2026 | notebook 05, M7–M8 |
+| Notebook 04 rerun (Part C) | B kept. Evaluated on 2011 with the B5 settings: at a 1% budget the four populations are indistinguishable, so the rule as written keeps B; with PR-AUC the same rule picks C, listed species only (+0.007 on listed line items, interval +0.002 to +0.012; +0.017 on listed commercial). The rerun came after the one test, which used B, so the design is not changed; the report states the result and lists training on listed species as future work | 31 October 2026 | notebook 04, P1–P2; user's choice |

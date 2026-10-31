@@ -16,7 +16,7 @@ from sklearn.metrics import average_precision_score
 
 from eda_setup import config
 from wildguard.features import SHARED_FEATURES, FeatureBuilder, to_model_matrix
-from wildguard.models import XGB_PARAMS
+from wildguard.models import CHOSEN_XGB, XGB_PARAMS
 from wildguard.schema_alignment import NON_ANIMAL_CLASSES as NON_ANIMAL  # noqa: F401
 
 LEMIS_COLS = ["shipment_id", "year", "class", "genus", "taxon", "product_group", "unit_group",
@@ -92,6 +92,17 @@ def fit_split(X_tr, y_tr, X_va, y_va, seed):
     return model
 
 
+def fit_chosen(X, y, train, val, seed):
+    """As fit(), with the XGBoost settings chosen in notebook 10 (B5: no class weights, depth 6,
+    learning rate 0.05, minimum child weight 20), early stopping on the validation rows instead
+    of the deployed model's fixed 357 rounds. Notebooks 04 and 05 were rerun with it; fit()
+    stays as notebooks 08 and 09 used it."""
+    model = xgb.XGBClassifier(**(CHOSEN_XGB | {"random_state": seed}), n_estimators=2000,
+                              early_stopping_rounds=60)
+    model.fit(X[train], y[train], eval_set=[(X[val], y[val])], verbose=False)
+    return model
+
+
 # "exact counterpart" key for mirror records (notebook 05): the same year, taxon, term, unit
 # group, countries, origin, purpose and source
 STRICT = ["year", "taxon", "importer", "exporter", "product_code", "unit_group", "origin",
@@ -144,8 +155,8 @@ def queue_rids(con, rule="D"):
 
 
 def load_cites(cats, reporters=("E", "I"), extra=(), keep=None):
-    """CITES 2015-2024 records ready to score, from the pipeline's CITES features (peer norms
-    learned from CITES).
+    """CITES 2015-2024 records ready to score, from the pipeline's CITES features (described
+    with the deployed model's LEMIS peer norms, DESIGN_QUESTIONS S2.1).
 
     Keeps the given reporter types; removes Appendix N, source I and purpose L
     (ALIGNING_LEMIS_AND_CITES.md section 1.2). Both datasets now use the CITES codes (ALIGNING

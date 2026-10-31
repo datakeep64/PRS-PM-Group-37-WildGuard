@@ -236,7 +236,9 @@ LEMIS-only comparison model, as a ceiling on what the shared fields lose.
 
 Two decisions were tested against rules fixed in advance and decided on 31 October 2026. The mirror
 rule was decided first, because the training-population evidence on CITES ([notebook 04](../SYSTEM%20CODE/notebooks/04_training_population.ipynb), P4–P5) is computed
-on the records it selects. A third decision, about the review tool, is open.
+on the records it selects. A third decision, the unit of the review queue, followed the same day
+(`SYSTEM CODE/DESIGN_QUESTIONS.md`, S6.1). Both notebooks were then rerun on the rebuilt data as a
+check, with the rules unchanged (31 October 2026); the figures below are the rerun's.
 
 - **Mirror records: rule D** (X1, C4; [notebook 05](../SYSTEM%20CODE/notebooks/05_mirror_records.ipynb)). A LEMIS row has one reporter, but a CITES trade is
   often reported twice. Aggregate statistics use exporter-reported records only (guide §2.2). The
@@ -250,27 +252,31 @@ on the records it selects. A third decision, about the review tool, is open.
   - Importer reports are not redundant. For US imports they match LEMIS better than the exporters'
     reports (M4). 6% of importer records describe trade no exporter reported, mostly from exporters
     that filed no export records that year (M5).
-  - Review effort lost in the top 1% (field match): exporter-only 17.1%, both 16.0%, rule D 4.4%. The
-    order is the same with either training population (M7).
+  - Review effort lost in the top 1% (field match): exporter-only 14.7%, both 18.7%, rule D 4.1%.
+    Rule D is the lowest in all four cases tested, with either training population (M7).
   - Using the permit to drop importer reports (D_permit) cuts duplication but misses more, because the
     dropped report is often the one the model flags (M7). The permit is therefore used to group and
     compare records, not to drop them.
 - **LEMIS training population: animals with a class** (X2, L11; [notebook 04](../SYSTEM%20CODE/notebooks/04_training_population.ipynb)). Compared with all line
-  items, CITES-listed species only and listed genera, on held-out CITES-listed line items:
-  - the four are indistinguishable overall (P1);
-  - training on CITES-listed species only is better on the commercial part (P2) but not overall, so
-    it failed the rule;
-  - the choice changes about a third of the CITES top 1% (P4).
+  items, CITES-listed species only and listed genera, on held-out CITES-listed line items of 2011:
+  - at a 1% review budget the four are indistinguishable (P1), so the rule as written keeps animals
+    with a class;
+  - judged on PR-AUC, the design's deciding metric, training on CITES-listed species only is slightly
+    better: +0.007 on listed line items and +0.017 on listed commercial ones (P2). The rerun came
+    after the one test of the finished system, which used animals with a class, so the design keeps
+    them and the report states this result;
+  - the choice changes about a fifth of the CITES top 1% (P4).
 
-  If WildGuard is later judged mainly on commercial trade, CITES-listed species only is the
-  candidate to re-test on a second year split.
-- **Open: the unit of the review queue: line items or permits** ([notebook 05](../SYSTEM%20CODE/notebooks/05_mirror_records.ipynb), M9). Under rule D, 10.9% of
-  the top-1% slots go to a second line of a permit already in the top 1%. That includes the other
-  country's report of the same consignment. 85% of multi-line permits in the top 1% are split across
-  the cut. Ranking permits by their highest-scoring line would free those slots, show whole
-  consignments, and absorb most of rule D's remaining duplication. The two reports of a consignment
-  disagree on quantity more often among high-risk records (M8). So a permit view would also let the
-  reviewer compare what each country reported. This changes the review tool, not the data.
+  Training on CITES-listed species only is the candidate to re-test, on a held-out period that has
+  not been used.
+- **The unit of the review queue: permits** (DESIGN_QUESTIONS S6.1, notebook 14; [notebook 05](../SYSTEM%20CODE/notebooks/05_mirror_records.ipynb), M9).
+  A line-item queue spends 13.3% of its top-1% slots on a second line of a permit already in it,
+  including the other country's report of the same consignment, and splits 73% of the multi-line
+  permits it reaches. The queue therefore ranks export permits, each scored by its highest record,
+  and the flag card shows the permit's records, with both countries' reports where they differ. In
+  the rerun the two reports disagree on quantity only slightly more often among high-risk records
+  (M8), so the comparison is context for the reviewer, not evidence of risk. This changes the review
+  tool, not the data.
 
 ### 2.3 Using the LEMIS labels on CITES
 
