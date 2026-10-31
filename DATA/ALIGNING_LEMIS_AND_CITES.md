@@ -76,8 +76,11 @@ rerun the notebooks first, then revise these rules.
    movement of items seized earlier, not a seizure (C7).
 10. **Ranking.** Rank within each year. Reports lag, so 2024 is incomplete and 2025 almost empty
    (C3).
-11. **Peer norms.** Learn the CITES peer norms (what is "normal" for a peer group) from the records
-    rule D selects, the population actually scored.
+11. **Peer norms.** Describe CITES records against the peer norms (what is "normal" for a peer
+    group) learned from LEMIS's training years, the same norms the model was trained with. Norms
+    re-learned from the records being scored were tested and rejected: on held-out LEMIS
+    populations they helped in three regions but were significantly worse in two of six tests
+    ([notebook 08](../SYSTEM%20CODE/notebooks/08_peer_norms.ipynb), N1–N2).
 
 ---
 
@@ -346,7 +349,10 @@ sections 1 and 2, and `check_alignment.py` runs the §2.4 checks, all of which p
   origin permit IDs), #14 (notebook 06); also the leech class name, found by check 3.
 - **Flagged in the data, applied when the later steps are rebuilt:** #7 (`rule_d` on CITES
   records) and #11 (`animal` on LEMIS line items).
-- **Open:** #12 (peer norms, waiting for design question S2.1), #6, #8 and #9 (report wording).
+- **Fixed differently than first planned:** #12. Design question S2.1 (notebook 08) chose LEMIS
+  norms for CITES, so `cites_features.py` now applies the LEMIS feature builder instead of
+  learning norms from CITES.
+- **Open:** #6, #8 and #9 (report wording).
 - With the crosswalk applied, rule D leaves 5,465,862 records to rank, 55 fewer than notebook 05
   found: CITES source `X` and a blank source now both read as unknown, so a few more importer
   reports match an exporter report.

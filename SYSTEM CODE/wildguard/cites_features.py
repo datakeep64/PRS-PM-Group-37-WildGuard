@@ -1,23 +1,23 @@
 """Feature construction for the unlabelled CITES stream.
 
-Peer-group norms (median quantity per genus/product/unit, route shares, purpose/source
-shares) are re-learned from CITES itself - no labels are needed for that - so a feature
-such as qty_z means "deviation from what is normal *in global CITES trade*", the same
-relative meaning it had in LEMIS. This "re-normalisation" is the first domain-adaptation
-step (its effect is measured in domain_shift.py).
+CITES records are described against the peer-group norms (median quantity per
+genus/product/unit, route shares, purpose/source shares) learned from LEMIS's training years:
+the same norms the model was trained with. Re-learning the norms from CITES itself was the
+earlier design; tested on held-out LEMIS populations it was significantly worse in two of six
+tests, so it was rejected (notebook 08; DATA/ALIGNING_LEMIS_AND_CITES.md section 1.2, step 11).
 """
 import joblib
 import pandas as pd
 
 from . import config
-from .features import FeatureBuilder
 
 CITES_COLS = ["shipment_id", "year", "class", "order_name", "family", "genus", "taxon",
               "taxon_display", "product_code", "product_group", "unit_group", "quantity_std",
               "value_usd", "purpose", "source", "origin", "exporter", "importer", "appendix",
-              "reporter_type", "origin_region", "exporter_region"]
+              "reporter_type", "origin_region", "exporter_region", "rule_d", "export_permit"]
 
 CITES_FEATURES_PARQUET = config.PROCESSED_DIR / "cites_features.parquet"
+# the builder applied to CITES records (the LEMIS one), saved under its own name for the app
 CITES_BUILDER = config.MODELS_DIR / "feature_builder_cites.joblib"
 
 
@@ -34,8 +34,7 @@ def build(years=config.CITES_SCORE_YEARS, force=False):
     if CITES_FEATURES_PARQUET.exists() and CITES_BUILDER.exists() and not force:
         return
     df = load_cites(years)
-    lemis_fb = joblib.load(config.MODELS_DIR / "feature_builder_lemis.joblib")
-    fb = FeatureBuilder(use_value=False).fit(df, vocab_from=lemis_fb)
+    fb = joblib.load(config.MODELS_DIR / "feature_builder_lemis.joblib")
     joblib.dump(fb, CITES_BUILDER, compress=3)
     parts = []
     for y in sorted(df["year"].unique()):

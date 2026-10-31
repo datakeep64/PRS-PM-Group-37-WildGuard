@@ -58,7 +58,7 @@ Learning Systems).
 |---|---|---|---|
 | **0 · Select records** (new) | All LEMIS line items; all CITES animal records, both reporter types | LEMIS animals with a class; CITES rule D, Appendix `N` removed, source `I` / purpose `L` out of the ranking | — |
 | **1 · Align** | Codes mapped by name; `P`/`O`, `Y`/`N` and some countries unmapped; latest appendix | Full crosswalk; higher taxa one way; appendix in force; product groups by coding (done on branch `rework`) | — |
-| **2 · Features** | Peer norms per population; peer groups on the current product groups | Peer groups on the new product groups and higher taxa; permit ID carried, not a feature | S2.1 whose peer norms; S2.2 consignment features; feature selection (B8) |
+| **2 · Features** | Peer norms per population; peer groups on the current product groups | Peer groups on the new product groups and higher taxa; CITES described against LEMIS norms (S2.1); permit ID carried, not a feature | S2.2 consignment features; feature selection (B8) |
 | **3 · Supervised** | XGBoost on all line items, chosen in advance | Trained on animals with a class; model chosen by Part B | Part B |
 | **4 · Unsupervised** | Peer deviation, Isolation Forest, K-Means, refitted on all CITES records | Refitted on rule D's records; detectors chosen by Part B | Part B |
 | **5 · Hybrid** | Meta-learner over all four signals, fitted on 2011–12, reused on CITES; reasons from the supervised model | One stacking layer; members chosen by Part B | S5.1 weights on CITES; S5.2 reasons |
@@ -119,8 +119,12 @@ Settled:
   feature (LEMIS has none).
 - Which features the chosen models keep is decided in Part B (B8).
 
-**S2.1 Peer norms on CITES: CITES's own or LEMIS's?** *To test.* RQ5. Decide first among the model
-questions: features, detectors and reasons all depend on it.
+**S2.1 Peer norms on CITES: CITES's own or LEMIS's?** *Decided: LEMIS norms* (31 October 2026,
+notebook 08). RQ5. Norms learned from the target helped on three regional holdouts but were
+significantly worse on Oceania (−0.066 PR-AUC) and on the time holdout (−0.007), so the rule
+fails and CITES records are described against LEMIS's training-year norms. ALIGNING §1.2 step 11
+and `cites_features.py` changed accordingly; the decision is rechecked with Part B's model in C6.
+The original question, for the record:
 - Why open: the design re-learns peer norms on CITES, on the argument that relative features
   transfer better (report §4.2). But in the regional holdout, re-normalising on the target did not
   help (PR-AUC 0.528 vs 0.539, §6.6 A).
@@ -252,7 +256,7 @@ decided. Brackets mark wording that depends on a decision.
 2. **Align.** Map LEMIS and CITES codes onto one schema: product forms grouped by what the object
    is, units, source and purpose codes (including the two that differ), countries, higher taxa, and
    the CITES listing in force at the time of the shipment.
-3. **Features.** Deviation from peer norms [learned from the records being scored / from LEMIS]:
+3. **Features.** Deviation from the peer norms of LEMIS's training years:
    quantity against peers, route rarity, unusual purpose or source [, consignment make-up].
 4. **Supervised.** [The model(s) chosen in Part B] learn from LEMIS outcomes: refused, seized,
    abandoned or re-exported vs cleared.
@@ -533,8 +537,9 @@ that the record was stopped (§1.4, §8). The original question, for the record:
   as a finding about which labels can reach CITES at all.
 
 **C6 Adaptation steps and the common rule.** *To test.* RQ5.
-- Already decided: training population (notebook 04); importance weighting (rejected, §6.6 C).
-- To test: CITES peer norms (S2.1); dropping strongly shifting feature groups (B8); a small
+- Already decided: training population (notebook 04); importance weighting (rejected, §6.6 C);
+  peer norms from the records being scored (rejected, S2.1, notebook 08).
+- To test: dropping strongly shifting feature groups (B8); a small
   labelled target sample (simulated, §6.6 A).
 - Considered and not pursued: a domain-adversarial network (S3.1).
 - Common rule: a step is adopted only if it helps on the regional holdout **and** on the listed
@@ -588,7 +593,7 @@ that the record was stopped (§1.4, §8). The original question, for the record:
    31 October 2026: `prepare_data.py`, `check_alignment.py` (all checks pass), notebook 06.*
 2. **C5:** build and test the US-overlap set. *Done, 31 October 2026: not usable (notebook 07).*
 3. **Choices and plans:** all decided on 31 October 2026 (B1–B4, B9, C1–C4, C7; see Decisions).
-4. **S2.1** (whose peer norms), then **S2.2** (consignment features).
+4. **S2.1** (whose peer norms), then **S2.2** (consignment features). *S2.1 done: LEMIS norms (notebook 08).*
 5. **Part B experiments:** B3 imbalance handling and B4 tuning → B5 supervised choice → B7
    detectors → B6 stack → B8 features.
 6. **Transfer and review:** S5.1, C6, S6.1; then the choices S5.2, S6.2, S6.3.
@@ -619,3 +624,4 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 | Appendix genus rule | Genus decides only when no species is named; otherwise `genus_listed` | 31 October 2026 | notebook 06, G6 |
 | Leech class | LEMIS `Clitellata` leech genera map to CITES `Hirudinoidea` | 31 October 2026 | ALIGNING §2.4 check 3 |
 | C5 US-overlap set | Not usable as labelled CITES data | 31 October 2026 | notebook 07, U1–U4: cases covered 39.1% vs cleared 72.0% |
+| S2.1 Peer norms on CITES | LEMIS training-year norms | 31 October 2026 | notebook 08, N1–N3: target norms significantly worse on 2 of 6 held-out populations |
