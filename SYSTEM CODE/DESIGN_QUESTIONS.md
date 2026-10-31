@@ -134,7 +134,8 @@ The original question, for the record:
 - This is the one open question that can change a rule in ALIGNING: if LEMIS norms win, §1.2 step
   11 changes.
 
-**S2.2 Consignment features.** *Decided: `cons_sources` adopted* (31 October 2026, notebook 09).
+**S2.2 Consignment features.** *Decided: `cons_sources` adopted* (31 October 2026, notebook 09);
+*then dropped by B8* (notebook 12: it adds nothing to the final ensemble).
 RQ2. Of five candidate features, only the numbers of purposes and of sources per consignment
 mean the same thing in LEMIS shipments and CITES permits; the number of purposes is constant in
 LEMIS training (every shipment has one), so only the number of distinct sources carries
@@ -475,7 +476,13 @@ record:
 - If no detector enters the stack, that is reported as the RQ4 result. The hybrid is then the
   supervised ensemble alone, and RQ4's answer is no.
 
-**B8 Feature selection.** *To test.* RQ2, RQ5.
+**B8 Feature selection.** *Decided* (31 October 2026, notebook 12): the 21 shared features; the
+consignment feature of S2.2 is dropped. RQ2, RQ5. Removing any other group significantly lowers
+PR-AUC on listed 2011 line items (most: countries −0.023, quantity −0.012), while the consignment
+feature adds nothing to the ensemble (+0.0003). Almost every feature shifts strongly between LEMIS
+and CITES (PSI above 0.25; appendix 9.4), but no group can be dropped for transfer: C6 also
+requires a gain on the listed held-out set, and every remaining group helps there. The plan, for
+the record:
 - Features are tested in groups, not one by one (route features, rarity features, appendix,
   genus, countries, quantity deviation, consignment features if S2.2 adopts them).
 - Importance (embedded: gain for tree models, coefficient size for linear ones) and mutual
@@ -583,7 +590,10 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 **C6 Adaptation steps and the common rule.** *To test.* RQ5.
 - Already decided: training population (notebook 04); importance weighting (rejected, §6.6 C);
   peer norms from the records being scored (rejected, S2.1, notebook 08).
-- To test: dropping strongly shifting feature groups (B8); a small
+- Decided without a further test: dropping strongly shifting feature groups (B8). Every
+  remaining group significantly helps on the listed held-out set (notebook 12, F2), so none can
+  pass this rule.
+- To test: a small
   labelled target sample (simulated, §6.6 A).
 - Considered and not pursued: a domain-adversarial network (S3.1).
 - Common rule: a step is adopted only if it helps on the regional holdout **and** on the listed
@@ -676,3 +686,4 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 | B6 Stack | XGBoost + random forest (100 trees, depth 16), average of percentile ranks | 31 October 2026 | notebook 11, H3–H7: forest adds +0.006 at this size (27 MB); size chosen for the hosted app |
 | B7 Detectors | None in the score; peer-deviation score shown as context | 31 October 2026 | notebook 11, H2–H3: no detector improves the ensemble |
 | S5.1 Stack weights on CITES | Moot: no fitted weights | 31 October 2026 | B6 |
+| B8 Features | The 21 shared features; consignment feature dropped | 31 October 2026 | notebook 12, F1–F5 |
