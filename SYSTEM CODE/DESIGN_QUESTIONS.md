@@ -58,7 +58,7 @@ Learning Systems).
 |---|---|---|---|
 | **0 · Select records** (new) | All LEMIS line items; all CITES animal records, both reporter types | LEMIS animals with a class; CITES rule D, Appendix `N` removed, source `I` / purpose `L` out of the ranking | — |
 | **1 · Align** | Codes mapped by name; `P`/`O`, `Y`/`N` and some countries unmapped; latest appendix | Full crosswalk; higher taxa one way; appendix in force; product groups by coding (done on branch `rework`) | — |
-| **2 · Features** | Peer norms per population; peer groups on the current product groups | Peer groups on the new product groups and higher taxa; CITES described against LEMIS norms (S2.1); permit ID carried, not a feature | S2.2 consignment features; feature selection (B8) |
+| **2 · Features** | Peer norms per population; peer groups on the current product groups | Peer groups on the new product groups and higher taxa; CITES described against LEMIS norms (S2.1); permit ID carried, not a feature | feature selection (B8) |
 | **3 · Supervised** | XGBoost on all line items, chosen in advance | Trained on animals with a class; model chosen by Part B | Part B |
 | **4 · Unsupervised** | Peer deviation, Isolation Forest, K-Means, refitted on all CITES records | Refitted on rule D's records; detectors chosen by Part B | Part B |
 | **5 · Hybrid** | Meta-learner over all four signals, fitted on 2011–12, reused on CITES; reasons from the supervised model | One stacking layer; members chosen by Part B | S5.1 weights on CITES; S5.2 reasons |
@@ -134,7 +134,12 @@ The original question, for the record:
 - This is the one open question that can change a rule in ALIGNING: if LEMIS norms win, §1.2 step
   11 changes.
 
-**S2.2 Consignment features.** *To test.* RQ2.
+**S2.2 Consignment features.** *Decided: `cons_sources` adopted* (31 October 2026, notebook 09).
+RQ2. Of five candidate features, only the numbers of purposes and of sources per consignment
+mean the same thing in LEMIS shipments and CITES permits; the number of purposes is constant in
+LEMIS training (every shipment has one), so only the number of distinct sources carries
+anything. It raises PR-AUC on listed 2011 line items by 0.002, with an interval just above zero:
+it passes the rule narrowly, and B8 tests it again. The original question, for the record:
 - Why open: a LEMIS shipment groups line items with one exporter, date and set of companies (§3.2,
   L1). A CITES export permit groups records the same way (M2, M9). Features describing the
   consignment (number of line items, number of taxa, mix of purposes and sources) could be learned
@@ -593,7 +598,7 @@ that the record was stopped (§1.4, §8). The original question, for the record:
    31 October 2026: `prepare_data.py`, `check_alignment.py` (all checks pass), notebook 06.*
 2. **C5:** build and test the US-overlap set. *Done, 31 October 2026: not usable (notebook 07).*
 3. **Choices and plans:** all decided on 31 October 2026 (B1–B4, B9, C1–C4, C7; see Decisions).
-4. **S2.1** (whose peer norms), then **S2.2** (consignment features). *S2.1 done: LEMIS norms (notebook 08).*
+4. **S2.1** (whose peer norms), then **S2.2** (consignment features). *Both done: LEMIS norms (notebook 08); `cons_sources` adopted (notebook 09).*
 5. **Part B experiments:** B3 imbalance handling and B4 tuning → B5 supervised choice → B7
    detectors → B6 stack → B8 features.
 6. **Transfer and review:** S5.1, C6, S6.1; then the choices S5.2, S6.2, S6.3.
@@ -625,3 +630,4 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 | Leech class | LEMIS `Clitellata` leech genera map to CITES `Hirudinoidea` | 31 October 2026 | ALIGNING §2.4 check 3 |
 | C5 US-overlap set | Not usable as labelled CITES data | 31 October 2026 | notebook 07, U1–U4: cases covered 39.1% vs cleared 72.0% |
 | S2.1 Peer norms on CITES | LEMIS training-year norms | 31 October 2026 | notebook 08, N1–N3: target norms significantly worse on 2 of 6 held-out populations |
+| S2.2 Consignment features | `cons_sources` (distinct sources in the shipment or permit) | 31 October 2026 | notebook 09, K1–K4: +0.002 PR-AUC, interval just above zero |

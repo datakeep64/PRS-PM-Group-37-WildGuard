@@ -293,7 +293,10 @@ learns are specific to US law, such as marine-mammal products (guide §1.4). For
 **What the model cannot learn.** Several signals exist only in CITES, so they cannot be learned
 from LEMIS enforcement outcomes and can enter only as context or unsupervised evidence:
 - permit-based signals: the two countries' reports of a consignment disagreeing (notebook 05, M8),
-  items travelling on one permit, re-export chains traced through origin permits;
+  re-export chains traced through origin permits, and most of what travels on one permit. One
+  consignment feature does carry over: the number of distinct sources in a LEMIS shipment or a
+  CITES permit ([notebook 09](../SYSTEM%20CODE/notebooks/09_consignment_features.ipynb)). The
+  number of items or taxa does not: a LEMIS shipment also holds unlisted items;
 - whether the other country reported the trade at all. This depends mostly on the reporting country
   (M5, M6): Taiwan, Russia and Canada, for example, report almost no imports in these records. So
   "not confirmed by the importer" is not a risk signal on its own.
