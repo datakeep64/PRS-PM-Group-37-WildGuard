@@ -324,7 +324,8 @@ the earlier question of which validation records to use.
 For feasibility, the search runs on a sample of shipments (for example 20%, whole shipments kept
 together); the chosen configurations are then refit on all of 2000–2010.
 
-**Which model is deployed on CITES.** The tested model is trained on 2000–2010, but CITES is scored
+**Which model is deployed on CITES.** *Decided: refit on 2000–2014* (notebook 13, R3–R4: PR-AUC
+falls from 0.570 to 0.512 as the gap grows from 1 to 7 years). The tested model is trained on 2000–2010, but CITES is scored
 for 2015–2024, so more recent training years could matter. C4 measures how performance changes
 as the gap between training and test years grows. Rule: if PR-AUC on listed line items falls by
 more than its bootstrap interval between the shortest and the longest gap, the chosen
@@ -559,7 +560,7 @@ four parts can be measured with labels, and the fourth is stated as a limitation
 
 | Shift | Measured by | Status |
 |---|---|---|
-| Time | Within LEMIS: performance against the gap between training and test years (for example, train 2000–2004, test each later year) | New |
+| Time | Within LEMIS: five-year training windows scored on the same year, 2011 (notebook 13): PR-AUC 0.570 at a 1-year gap, 0.512 at 7 years | Measured |
 | Trade mix | Listed and commercial held-out sets (C1); the regional holdout (§6.6 A) | Partly done |
 | Recording | Domain classifier on US-reported records (§6.6 B, AUC 0.771). The US-overlap labelled set (C5) proved unusable: most enforcement cases never reach the CITES record | Partly measurable |
 | Jurisdiction | Not measurable: no labels outside the US. Indirect only (C7); stated as a limitation | Limitation |
@@ -587,7 +588,9 @@ that the record was stopped (§1.4, §8). The original question, for the record:
   usable if case and cleared coverage differ by less than 10 points; otherwise the gap is reported
   as a finding about which labels can reach CITES at all.
 
-**C6 Adaptation steps and the common rule.** *To test.* RQ5.
+**C6 Adaptation steps and the common rule.** *Decided* (31 October 2026, notebooks 12–13): no
+adaptation step is adopted beyond those already decided, and the chosen ensemble passes the
+transfer check: on no held-out region is it significantly worse than XGBoost alone. RQ5.
 - Already decided: training population (notebook 04); importance weighting (rejected, §6.6 C);
   peer norms from the records being scored (rejected, S2.1, notebook 08).
 - Decided without a further test: dropping strongly shifting feature groups (B8). Every
@@ -687,3 +690,5 @@ that the record was stopped (§1.4, §8). The original question, for the record:
 | B7 Detectors | None in the score; peer-deviation score shown as context | 31 October 2026 | notebook 11, H2–H3: no detector improves the ensemble |
 | S5.1 Stack weights on CITES | Moot: no fitted weights | 31 October 2026 | B6 |
 | B8 Features | The 21 shared features; consignment feature dropped | 31 October 2026 | notebook 12, F1–F5 |
+| C6 Transfer check | Ensemble passes; no further adaptation step | 31 October 2026 | notebook 13, R1–R2 |
+| B1 Deployed model | Refit on 2000–2014 after the one test | 31 October 2026 | notebook 13, R3–R4: performance falls with the gap |
