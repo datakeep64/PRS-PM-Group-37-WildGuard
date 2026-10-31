@@ -269,12 +269,23 @@ def prepare_fold(df, feats, tr_span, va_span, seed=37):
                 X_va=base.transform(F_va), y_va=df["label"].to_numpy()[va])
 
 
-def search(df, feats, candidates, seed=37, log=print):
-    """Random search per candidate over the two folds. Returns one row per (candidate, config)."""
+def search(df, feats, candidates, seed=37, log=print, cache_dir=None):
+    """Random search per candidate over the two folds. Returns one row per (candidate, config).
+
+    With `cache_dir`, each candidate's results are saved as soon as it finishes
+    (search_<candidate>.parquet) and read back instead of rerun, so an interrupted search
+    resumes where it stopped."""
+    cached = {c: pd.read_parquet(cache_dir / f"search_{c}.parquet") for c in candidates
+              if cache_dir and (cache_dir / f"search_{c}.parquet").exists()}
+    todo = [c for c in candidates if c not in cached]
+    if cached:
+        log(f"read from cache: {list(cached)}")
+    if not todo:
+        return pd.concat([cached[c] for c in candidates], ignore_index=True)
     folds = [prepare_fold(df, feats, tr, va, seed) for tr, va in FOLDS]
     log(f"folds ready: {[len(f['y_tr']) for f in folds]} training rows")
-    rows = []
-    for name in candidates:
+    for name in todo:
+        rows = []
         rng = np.random.default_rng(seed)
         for i in range(N_CONFIGS):
             cfg = sample_config(name, rng)
@@ -289,7 +300,10 @@ def search(df, feats, candidates, seed=37, log=print):
                          "best_rounds": int(np.mean(bests)) if bests[0] is not None else None,
                          "seconds": time.time() - t})
             log(f"{name} {i}: PR-AUC {np.mean(aps):.3f} ({cfg['imbalance']}, {time.time() - t:.0f}s)")
-    return pd.DataFrame(rows)
+        cached[name] = pd.DataFrame(rows)
+        if cache_dir:
+            cached[name].to_parquet(cache_dir / f"search_{name}.parquet")
+    return pd.concat([cached[c] for c in candidates], ignore_index=True)
 
 
 def config_from_row(row):
