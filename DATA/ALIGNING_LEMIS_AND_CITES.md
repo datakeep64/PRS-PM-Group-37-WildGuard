@@ -145,6 +145,25 @@ maps onto the other one to one, so both map to shared groups (X5, L9, C8).
 - **After mapping, compare group shares in both datasets.** A group that is large on one side and
   empty on the other points to a coding difference, not a difference in trade.
 
+The groups, as decided in [notebook 06](../SYSTEM%20CODE/notebooks/06_product_groups.ipynb)
+(findings G1–G5; the groups are in `SYSTEM CODE/wildguard/schema_alignment.py`):
+- **One leather group.** LEMIS small and large leather goods, shoes and trim, and the CITES leather
+  and fur product terms, form `leather_products`. LEMIS shoes are mostly reptile leather, CITES
+  never used *shoes* in 2015–2024, and CITES uses *leather products (large)* on 0.5% of leather
+  records. LEMIS small goods, large goods and shoes are enforced at similar rates (2.0–3.1%).
+  Garments stay separate (0.6%).
+- **Live rock is raw coral.** LEMIS `ROC` is *Scleractinia*, which CITES records as *raw corals*.
+- **Codes outside the animal groups.** LEMIS `VEN` is wood veneer and `FIB` plant fibre: with the
+  other plant and wood codes they go to `other`. CITES *fibres* on animal records are animal fibre
+  and go to `hair`.
+- **Differences in trade, not coding.** The groups whose shares still differ more than tenfold
+  are trophies, shells, horn, hair, scales, cloth, `other`, caviar and fins. Restricted to
+  species with a CITES listing in force, all but caviar and fins fall below tenfold: LEMIS holds
+  US imports of species CITES does not list (pearl-oyster shells, deer antler, badger hair,
+  starfish), and the US is the largest importer of hunting trophies. Caviar uses the same term
+  for the same taxa in both datasets; the sharks behind CITES fin records were listed in 2014 or
+  later, when LEMIS ends.
+
 **Countries.** Both mostly use ISO-3166 alpha-2. These LEMIS codes never occur in CITES (L12, X9):
 
 | LEMIS | Meaning | Map to | LEMIS values (origin + exporter) |
@@ -162,6 +181,9 @@ unknown.
 - **Class names** (X6). LEMIS follows Catalogue of Life and CITES its own standard nomenclature:
   - `Actinopterygii` = `Actinopteri`;
   - LEMIS `Sarcopterygii` covers CITES `Dipneusti` and `Coelacanthi`;
+  - LEMIS `Clitellata` holds both earthworms and leeches; CITES files leeches (*Hirudo*, 8,380
+    records) as `Hirudinoidea`, so leech genera (*Hirudo*, *Hirudinaria*, *Placobdella*) map
+    there. The EDA missed this; check 3 of §2.4 found it on the rebuilt data;
   - the 50-odd classes found only in LEMIS are taxa CITES does not list.
 - **Higher taxa** (L11, C10, X7). The two datasets store them differently:
   - LEMIS writes an order, family or class name into `genus`: 64,805 line items, 137 names, e.g.
@@ -187,8 +209,13 @@ unknown.
     one. Listings change: pangolins are Appendix II in CITES records to 2016 and Appendix I from
     2017.
   - ignore Appendix `N`.
-  - for the model feature, fall back to the genus when CITES has no record of the species by that
-    year (as in notebooks 04 and 05).
+  - for the model feature, the genus decides only when the record names no species (`sp.` or a
+    higher taxon): it takes the strictest appendix in force for the genus. A record that names a
+    species CITES has no record of gets the value `genus_listed` when its genus has one, and
+    `not_listed` otherwise. Taking a congener's appendix instead, as notebooks 04 and 05 did,
+    made American mink Appendix I (through the black-footed ferret) and mislabelled synonyms such
+    as the reticulated python, which CITES records as *Malayopython reticulatus*. Those line items
+    are enforced at 1.02%, close to unlisted species (0.83%) (notebook 06, G6).
 
   On this basis (species level, no genus fallback), LEMIS case rates are 4.0% for Appendix I, 1.8%
   for II, and 1.5% for species with no CITES record in that year. The [Checklist of CITES Species](https://checklist.cites.org) and
@@ -304,6 +331,17 @@ Run these after any change to data loading, the crosswalk, or either dataset's v
 
 These deviations were found by comparing `SYSTEM CODE/wildguard/` with sections 1 and 2. The measured
 effects use the deployed model and the committed outputs, which score both reporter types.
+
+**Progress on branch `rework` (31 October 2026).** The data step (`prepare_data.py`) now follows
+sections 1 and 2, and `check_alignment.py` runs the §2.4 checks, all of which pass:
+- **Fixed:** #1, #2, #3, #4 (including the corrected genus rule above), #5, #10, #13 (export and
+  origin permit IDs), #14 (notebook 06); also the leech class name, found by check 3.
+- **Flagged in the data, applied when the later steps are rebuilt:** #7 (`rule_d` on CITES
+  records) and #11 (`animal` on LEMIS line items).
+- **Open:** #12 (peer norms, waiting for design question S2.1), #6, #8 and #9 (report wording).
+- With the crosswalk applied, rule D leaves 5,465,862 records to rank, 55 fewer than notebook 05
+  found: CITES source `X` and a blank source now both read as unknown, so a few more importer
+  reports match an exporter report.
 
 | # | Deviation | Where | Effect | Fix |
 |---|---|---|---|---|

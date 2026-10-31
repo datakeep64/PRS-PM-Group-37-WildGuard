@@ -21,9 +21,8 @@ PURPOSE.update({"N": "Reintroduction or introduction into the wild",
                 "unknown": "not declared"})
 SOURCE = {"W": "wild-caught", "C": "bred in captivity", "F": "born in captivity (F)",
           "R": "ranched", "D": "commercially bred (Appendix I)", "A": "artificially propagated",
-          "I": "confiscated/seized specimen", "P": "pre-Convention", "U": "unknown source",
-          "O": "pre-Convention (O)", "X": "taken from the marine environment",
-          "Y": "assisted production", "unknown": "not declared"}
+          "I": "confiscated/seized specimen", "U": "unknown source", "O": "pre-Convention",
+          "unknown": "not declared"}
 PORT = dict(_CODES.loc[_CODES.field == "port", ["code", "value"]].values)
 
 
@@ -93,6 +92,8 @@ def reason_for(feature, r):
         return f"taxonomic class {r.get('class')}"
     if feature == "appendix":
         a = r.get("appendix")
+        if a == "genus_listed":
+            return "species not found in CITES records; its genus is listed"
         return "species not CITES-listed" if a in ("not_listed", "N") else f"CITES Appendix {a}"
     if feature == "peer_n_log":
         return "few comparable records for this taxon/product (thin peer group)"

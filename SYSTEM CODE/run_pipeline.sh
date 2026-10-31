@@ -7,6 +7,7 @@ PY="${PYTHON:-python}"
 
 $PY -m wildguard.datasets           # source versions, sizes and first rows (app Overview)
 $PY -m wildguard.prepare_data       # 1. acquire & align LEMIS + CITES onto one schema
+$PY -m wildguard.check_alignment    #    the alignment checks (DATA/ALIGNING_LEMIS_AND_CITES.md 2.4)
 $PY -m wildguard.train              # 2-6. features, supervised/unsupervised/hybrid, LEMIS evaluation
 $PY -m wildguard.cites_features     # CITES features with peer norms learned from CITES
 $PY -m wildguard.domain_shift       # transfer-robustness experiments + deployment choice

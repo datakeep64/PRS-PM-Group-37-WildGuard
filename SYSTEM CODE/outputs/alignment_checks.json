@@ -1,0 +1,848 @@
+{
+ "1 file identity": {
+  "status": "PASS",
+  "summary": "LEMIS v1.1.0 (checksum ok); CITES v2026.1, extracted 9 June 2026, 59 files",
+  "detail": {
+   "lemis_version": "1.1.0",
+   "cites_version": "2026.1",
+   "cites_extracted": "9 June 2026",
+   "cites_files": 59
+  }
+ },
+ "2 codes valid": {
+  "status": "PASS",
+  "summary": "0 scored CITES records with an unmapped term or unit; 0 LEMIS training line items with an unmapped description",
+  "detail": {
+   "lemis_description_unmapped": [],
+   "cites_term_unmapped": [],
+   "lemis_unit_other": 84,
+   "cites_unit_other": 0,
+   "lemis_unit_codes": [
+    "C2",
+    "C3",
+    "CM",
+    "GM",
+    "KG",
+    "LT",
+    "M2",
+    "M3",
+    "MG",
+    "ML",
+    "MT",
+    "NO"
+   ],
+   "cites_unit_words": [
+    "(skins)",
+    "Number of specimens",
+    "backskins",
+    "bellyskins",
+    "cm",
+    "cm2",
+    "cm3",
+    "ft2",
+    "g",
+    "hornback skins",
+    "items",
+    "kg",
+    "l",
+    "lbs",
+    "m",
+    "m2",
+    "m3",
+    "mg",
+    "microgrammes",
+    "ml",
+    "pairs",
+    "pieces",
+    "sets",
+    "sides"
+   ]
+  }
+ },
+ "3 no unseen categories": {
+  "status": "PASS",
+  "summary": "CITES values never seen in LEMIS training: none",
+  "detail": {
+   "class": [],
+   "product_group": [],
+   "unit_group": [],
+   "purpose": [],
+   "source": [],
+   "appendix": [],
+   "origin_region": [],
+   "exporter_region": []
+  }
+ },
+ "4 group shares": {
+  "status": "PASS",
+  "summary": "groups on one side only: class=Malacostraca (LEMIS 2.38%, CITES 0.00%), class=Asteroidea (LEMIS 0.21%, CITES 0.00%), class=Echinoidea (LEMIS 0.15%, CITES 0.00%)",
+  "detail": {
+   "product_group": [
+    {
+     "g": "live",
+     "lemis": 0.28318,
+     "cites": 0.22571
+    },
+    {
+     "g": "trophies",
+     "lemis": 0.19457,
+     "cites": 0.01878
+    },
+    {
+     "g": "leather_products",
+     "lemis": 0.16868,
+     "cites": 0.56668
+    },
+    {
+     "g": "shells",
+     "lemis": 0.102,
+     "cites": 0.00034
+    },
+    {
+     "g": "carvings_jewellery",
+     "lemis": 0.04903,
+     "cites": 0.00697
+    },
+    {
+     "g": "garments",
+     "lemis": 0.04523,
+     "cites": 0.01451
+    },
+    {
+     "g": "skins",
+     "lemis": 0.02527,
+     "cites": 0.04042
+    },
+    {
+     "g": "specimens",
+     "lemis": 0.02198,
+     "cites": 0.03132
+    },
+    {
+     "g": "meat",
+     "lemis": 0.0195,
+     "cites": 0.00582
+    },
+    {
+     "g": "bodies",
+     "lemis": 0.01639,
+     "cites": 0.00543
+    },
+    {
+     "g": "coral_raw",
+     "lemis": 0.01433,
+     "cites": 0.00955
+    },
+    {
+     "g": "feathers",
+     "lemis": 0.00994,
+     "cites": 0.0012
+    },
+    {
+     "g": "horn",
+     "lemis": 0.00939,
+     "cites": 0.0001
+    },
+    {
+     "g": "hair",
+     "lemis": 0.00894,
+     "cites": 0.00087
+    },
+    {
+     "g": "other",
+     "lemis": 0.00565,
+     "cites": 0.00024
+    },
+    {
+     "g": "skulls",
+     "lemis": 0.00492,
+     "cites": 0.00549
+    },
+    {
+     "g": "ivory",
+     "lemis": 0.00467,
+     "cites": 0.00512
+    },
+    {
+     "g": "skin_pieces",
+     "lemis": 0.00426,
+     "cites": 0.01199
+    },
+    {
+     "g": "extracts_medicine",
+     "lemis": 0.00361,
+     "cites": 0.02039
+    },
+    {
+     "g": "eggs",
+     "lemis": 0.00258,
+     "cites": 0.00049
+    },
+    {
+     "g": "bone",
+     "lemis": 0.00188,
+     "cites": 0.0009
+    },
+    {
+     "g": "body_parts",
+     "lemis": 0.00136,
+     "cites": 0.00092
+    },
+    {
+     "g": "teeth_claws",
+     "lemis": 0.00136,
+     "cites": 0.00105
+    },
+    {
+     "g": "caviar",
+     "lemis": 0.00052,
+     "cites": 0.02157
+    },
+    {
+     "g": "live_eggs",
+     "lemis": 0.00034,
+     "cites": 0.00014
+    },
+    {
+     "g": "scales",
+     "lemis": 0.00019,
+     "cites": 2e-05
+    },
+    {
+     "g": "cloth",
+     "lemis": 0.00017,
+     "cites": 0.0018
+    },
+    {
+     "g": "fins",
+     "lemis": 4e-05,
+     "cites": 0.00218
+    }
+   ],
+   "class": [
+    {
+     "g": "Mammalia",
+     "lemis": 0.327,
+     "cites": 0.08187
+    },
+    {
+     "g": "Reptilia",
+     "lemis": 0.13858,
+     "cites": 0.6507
+    },
+    {
+     "g": "Anthozoa",
+     "lemis": 0.12983,
+     "cites": 0.15078
+    },
+    {
+     "g": "Bivalvia",
+     "lemis": 0.0968,
+     "cites": 0.00107
+    },
+    {
+     "g": "Actinopteri",
+     "lemis": 0.08114,
+     "cites": 0.04962
+    },
+    {
+     "g": "Aves",
+     "lemis": 0.06956,
+     "cites": 0.05275
+    },
+    {
+     "g": "Gastropoda",
+     "lemis": 0.06011,
+     "cites": 0.00282
+    },
+    {
+     "g": "Insecta",
+     "lemis": 0.03288,
+     "cites": 0.00147
+    },
+    {
+     "g": "Malacostraca",
+     "lemis": 0.02375,
+     "cites": 0.0
+    },
+    {
+     "g": "Amphibia",
+     "lemis": 0.01413,
+     "cites": 0.00184
+    },
+    {
+     "g": "Cephalopoda",
+     "lemis": 0.00752,
+     "cites": 5e-05
+    },
+    {
+     "g": "Elasmobranchii",
+     "lemis": 0.00721,
+     "cites": 0.00485
+    },
+    {
+     "g": "Arachnida",
+     "lemis": 0.00316,
+     "cites": 0.00044
+    },
+    {
+     "g": "Asteroidea",
+     "lemis": 0.00211,
+     "cites": 0.0
+    },
+    {
+     "g": "Echinoidea",
+     "lemis": 0.00155,
+     "cites": 0.0
+    },
+    {
+     "g": "Holothuroidea",
+     "lemis": 0.00122,
+     "cites": 0.00025
+    },
+    {
+     "g": "Ascidiacea",
+     "lemis": 0.00074,
+     "cites": 0.0
+    },
+    {
+     "g": "Hydrozoa",
+     "lemis": 0.00064,
+     "cites": 0.00108
+    },
+    {
+     "g": "Demospongiae",
+     "lemis": 0.00046,
+     "cites": 0.0
+    },
+    {
+     "g": "Myxini",
+     "lemis": 0.00034,
+     "cites": 0.0
+    },
+    {
+     "g": "Polychaeta",
+     "lemis": 0.00032,
+     "cites": 0.0
+    },
+    {
+     "g": "Chilopoda",
+     "lemis": 0.00021,
+     "cites": 0.0
+    },
+    {
+     "g": "Hirudinoidea",
+     "lemis": 0.00012,
+     "cites": 0.00039
+    },
+    {
+     "g": "Maxillopoda",
+     "lemis": 0.00012,
+     "cites": 0.0
+    },
+    {
+     "g": "Scyphozoa",
+     "lemis": 0.00012,
+     "cites": 0.0
+    },
+    {
+     "g": "Diplopoda",
+     "lemis": 0.0001,
+     "cites": 0.0
+    },
+    {
+     "g": "Clitellata",
+     "lemis": 5e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Polyplacophora",
+     "lemis": 5e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Calcarea",
+     "lemis": 3e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Scaphopoda",
+     "lemis": 3e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Cestoda",
+     "lemis": 2e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Dipneusti",
+     "lemis": 2e-05,
+     "cites": 2e-05
+    },
+    {
+     "g": "Cephalaspidomorphi",
+     "lemis": 2e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Ophiuroidea",
+     "lemis": 1e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Hexanauplia",
+     "lemis": 1e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Branchiopoda",
+     "lemis": 1e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Tentaculata",
+     "lemis": 1e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Merostomata",
+     "lemis": 1e-05,
+     "cites": 0.0
+    },
+    {
+     "g": "Leptocardii",
+     "lemis": 0.0,
+     "cites": 0.0
+    },
+    {
+     "g": "Coelacanthi",
+     "lemis": 0.0,
+     "cites": 0.0
+    },
+    {
+     "g": "Secernentea",
+     "lemis": 0.0,
+     "cites": 0.0
+    },
+    {
+     "g": "Holocephali",
+     "lemis": 0.0,
+     "cites": 0.0
+    }
+   ],
+   "one_sided": [
+    "class=Malacostraca (LEMIS 2.38%, CITES 0.00%)",
+    "class=Asteroidea (LEMIS 0.21%, CITES 0.00%)",
+    "class=Echinoidea (LEMIS 0.15%, CITES 0.00%)"
+   ]
+  }
+ },
+ "5 value coverage": {
+  "status": "INFO",
+  "summary": "years without declared value: [2008, 2009, 2010, 2014]",
+  "detail": [
+   {
+    "year": 2000,
+    "share_with_value": 0.8681
+   },
+   {
+    "year": 2001,
+    "share_with_value": 0.8907
+   },
+   {
+    "year": 2002,
+    "share_with_value": 0.9031
+   },
+   {
+    "year": 2003,
+    "share_with_value": 0.8962
+   },
+   {
+    "year": 2004,
+    "share_with_value": 0.8936
+   },
+   {
+    "year": 2005,
+    "share_with_value": 0.9031
+   },
+   {
+    "year": 2006,
+    "share_with_value": 0.8812
+   },
+   {
+    "year": 2007,
+    "share_with_value": 0.8823
+   },
+   {
+    "year": 2008,
+    "share_with_value": 0.0
+   },
+   {
+    "year": 2009,
+    "share_with_value": 0.0
+   },
+   {
+    "year": 2010,
+    "share_with_value": 0.0
+   },
+   {
+    "year": 2011,
+    "share_with_value": 0.6268
+   },
+   {
+    "year": 2012,
+    "share_with_value": 0.9162
+   },
+   {
+    "year": 2013,
+    "share_with_value": 0.5348
+   },
+   {
+    "year": 2014,
+    "share_with_value": 0.0
+   }
+  ]
+ },
+ "6 higher taxa": {
+  "status": "PASS",
+  "summary": "CITES records without genus: 0; Scleractinia in both: LEMIS 45,922, CITES 226,239; LEMIS training genera found in CITES: 59.5% of line items",
+  "detail": {
+   "cites_blank_genus": 0,
+   "lemis_genus_found_in_cites": 0.5954215389077616
+  }
+ },
+ "7 Appendix N": {
+  "status": "PASS",
+  "summary": "CITES Appendix N records: 0; LEMIS appendix values: ['I', 'II', 'III', 'genus_listed', 'not_listed']",
+  "detail": {
+   "cites_appendix_n": 0,
+   "lemis_appendix_values": [
+    "I",
+    "II",
+    "III",
+    "genus_listed",
+    "not_listed"
+   ]
+  }
+ },
+ "8 mirror records": {
+  "status": "PASS",
+  "summary": "scored records (rule D, no source I / purpose L): 5,465,862; export permit on 96.8% of records",
+  "detail": {
+   "by_reporter": [
+    {
+     "reporter_type": "E",
+     "rule_d": true,
+     "n": 4835543,
+     "with_export_permit": 0.992313169379323
+    },
+    {
+     "reporter_type": "I",
+     "rule_d": false,
+     "n": 2741667,
+     "with_export_permit": 0.9427541710937178
+    },
+    {
+     "reporter_type": "I",
+     "rule_d": true,
+     "n": 663372,
+     "with_export_permit": 0.8963387058844811
+    }
+   ],
+   "scored": 5465862,
+   "export_permit_share": 0.968098733803025
+  }
+ },
+ "9 latest years": {
+  "status": "INFO",
+  "summary": "scoring years with under 80% of the 2018-2023 median: [2024]",
+  "detail": [
+   {
+    "year": 2000,
+    "n": 188286
+   },
+   {
+    "year": 2001,
+    "n": 193302
+   },
+   {
+    "year": 2002,
+    "n": 192840
+   },
+   {
+    "year": 2003,
+    "n": 218269
+   },
+   {
+    "year": 2004,
+    "n": 244334
+   },
+   {
+    "year": 2005,
+    "n": 291518
+   },
+   {
+    "year": 2006,
+    "n": 376459
+   },
+   {
+    "year": 2007,
+    "n": 385881
+   },
+   {
+    "year": 2008,
+    "n": 411961
+   },
+   {
+    "year": 2009,
+    "n": 400880
+   },
+   {
+    "year": 2010,
+    "n": 428714
+   },
+   {
+    "year": 2011,
+    "n": 476168
+   },
+   {
+    "year": 2012,
+    "n": 564088
+   },
+   {
+    "year": 2013,
+    "n": 590790
+   },
+   {
+    "year": 2014,
+    "n": 563607
+   },
+   {
+    "year": 2015,
+    "n": 609357
+   },
+   {
+    "year": 2016,
+    "n": 582931
+   },
+   {
+    "year": 2017,
+    "n": 563050
+   },
+   {
+    "year": 2018,
+    "n": 496858
+   },
+   {
+    "year": 2019,
+    "n": 477898
+   },
+   {
+    "year": 2020,
+    "n": 388934
+   },
+   {
+    "year": 2021,
+    "n": 431044
+   },
+   {
+    "year": 2022,
+    "n": 438760
+   },
+   {
+    "year": 2023,
+    "n": 483506
+   },
+   {
+    "year": 2024,
+    "n": 363205
+   }
+  ]
+ },
+ "10 labels": {
+  "status": "PASS",
+  "summary": "enforcement cases: 95,665 in the aligned file, 95,665 by the rule",
+  "detail": [
+   {
+    "action": "C",
+    "disposition": "C",
+    "n": 5417030
+   },
+   {
+    "action": "R",
+    "disposition": "S",
+    "n": 53028
+   },
+   {
+    "action": "R",
+    "disposition": "A",
+    "n": 22257
+   },
+   {
+    "action": "R",
+    "disposition": "R",
+    "n": 18212
+   },
+   {
+    "action": "R",
+    "disposition": "C",
+    "n": 2075
+   },
+   {
+    "action": "R",
+    "disposition": "NA",
+    "n": 68
+   },
+   {
+    "action": "C",
+    "disposition": "R",
+    "n": 23
+   },
+   {
+    "action": "C",
+    "disposition": "NA",
+    "n": 10
+   },
+   {
+    "action": "C",
+    "disposition": "S",
+    "n": 2
+   },
+   {
+    "action": "NA",
+    "disposition": "C",
+    "n": 1
+   }
+  ]
+ },
+ "11 US overlap": {
+  "status": "PASS",
+  "summary": "mix difference (total variation): purpose 0.059, source 0.074",
+  "detail": {
+   "purpose": [
+    {
+     "v": "T",
+     "lemis": 0.7824,
+     "cites": 0.8417
+    },
+    {
+     "v": "H",
+     "lemis": 0.1626,
+     "cites": 0.104
+    },
+    {
+     "v": "P",
+     "lemis": 0.0329,
+     "cites": 0.0327
+    },
+    {
+     "v": "M",
+     "lemis": 0.0093,
+     "cites": 0.0092
+    },
+    {
+     "v": "S",
+     "lemis": 0.009,
+     "cites": 0.0091
+    },
+    {
+     "v": "Q",
+     "lemis": 0.0017,
+     "cites": 0.0018
+    },
+    {
+     "v": "Z",
+     "lemis": 0.0009,
+     "cites": 0.0008
+    },
+    {
+     "v": "E",
+     "lemis": 0.0006,
+     "cites": 0.0004
+    },
+    {
+     "v": "B",
+     "lemis": 0.0003,
+     "cites": 0.0001
+    },
+    {
+     "v": "N",
+     "lemis": 0.0001,
+     "cites": 0.0001
+    },
+    {
+     "v": "unknown",
+     "lemis": 0.0001,
+     "cites": 0.0
+    },
+    {
+     "v": "L",
+     "lemis": 0.0,
+     "cites": 0.0
+    },
+    {
+     "v": "G",
+     "lemis": 0.0,
+     "cites": 0.0
+    }
+   ],
+   "source": [
+    {
+     "v": "W",
+     "lemis": 0.6419,
+     "cites": 0.6721
+    },
+    {
+     "v": "C",
+     "lemis": 0.2071,
+     "cites": 0.1678
+    },
+    {
+     "v": "F",
+     "lemis": 0.1017,
+     "cites": 0.1125
+    },
+    {
+     "v": "R",
+     "lemis": 0.042,
+     "cites": 0.0131
+    },
+    {
+     "v": "U",
+     "lemis": 0.0046,
+     "cites": 0.0004
+    },
+    {
+     "v": "unknown",
+     "lemis": 0.0016,
+     "cites": 0.0
+    },
+    {
+     "v": "O",
+     "lemis": 0.0007,
+     "cites": 0.0051
+    },
+    {
+     "v": "D",
+     "lemis": 0.0002,
+     "cites": 0.0
+    },
+    {
+     "v": "I",
+     "lemis": 0.0001,
+     "cites": 0.029
+    },
+    {
+     "v": "A",
+     "lemis": 0.0,
+     "cites": 0.0
+    }
+   ],
+   "total_variation": {
+    "purpose": 0.05949955338626611,
+    "source": 0.07427329240256804
+   }
+  }
+ }
+}

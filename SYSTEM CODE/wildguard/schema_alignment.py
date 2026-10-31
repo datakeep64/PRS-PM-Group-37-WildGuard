@@ -5,23 +5,31 @@ same kind of event - a wildlife product crossing a border - but encode it differ
 
   * product form: LEMIS 3-letter codes (LIV, SKI, ...) vs CITES English terms ("live", "skins")
   * units:        LEMIS codes (NO, KG, GM, ...)       vs CITES words ("kg", blank = number)
-  * source / purpose codes are the CITES letter codes in both (verified from both codebooks)
-  * countries are ISO-3166 alpha-2 in both
+  * source / purpose: the same letters, except pre-Convention (LEMIS P, CITES O) and
+    reintroduction (LEMIS Y, CITES N)
+  * countries: ISO-3166 alpha-2 in both, plus a few LEMIS codes CITES never uses
+  * taxonomy: class names differ for fish; higher taxa are stored differently
 
-Both are mapped to coarse *product groups* and *unit groups* so that a model trained on
-LEMIS can be applied to CITES records.
+The shared form uses the CITES codes. Product forms and units are mapped to coarse *product
+groups* and *unit groups* so that a model trained on LEMIS can be applied to CITES records.
+The rules, and the findings behind them, are in DATA/ALIGNING_LEMIS_AND_CITES.md section 2.1.
 """
 
 # --- Product form -------------------------------------------------------------------------
 # Coarse groups keep enough distinctions to matter for risk (live vs dead, raw vs worked,
-# ivory/horn/bone kept separate) while staying aligned across the two vocabularies.
+# ivory/horn/bone kept separate) while staying aligned across the two vocabularies. Groups are
+# defined by how each vocabulary records an object, not by matching names (notebook 06):
+#   - CITES records shoes, and nearly all manufactured leather goods, as "leather products
+#     (small)"; LEMIS splits them into small and large goods and shoes. One leather group.
+#   - CITES records live rock as raw coral; LEMIS has its own code (ROC).
 LEMIS_DESCRIPTION_TO_GROUP = {
-    "LIV": "live", "EGL": "live_eggs", "FIG": "live", "ROC": "coral_live_rock",
+    "LIV": "live", "EGL": "live_eggs", "FIG": "live", "ROC": "coral_raw",
     "BOD": "bodies", "DEA": "bodies", "TRO": "trophies",
     "SKI": "skins", "SID": "skins", "PLA": "skins", "RUG": "skins",
     "SKP": "skin_pieces",
-    "LPS": "leather_small", "LPL": "leather_large",
-    "GAR": "garments", "SHO": "shoes", "TRI": "leather_small", "CLO": "cloth",
+    "LPS": "leather_products", "LPL": "leather_products", "SHO": "leather_products",
+    "TRI": "leather_products",
+    "GAR": "garments", "CLO": "cloth",
     "SPE": "specimens",
     "MEA": "meat", "LEG": "meat", "SOU": "meat", "CAL": "meat",
     "CAV": "caviar",
@@ -43,6 +51,11 @@ LEMIS_DESCRIPTION_TO_GROUP = {
     "TAI": "body_parts", "FOO": "body_parts", "EAR": "body_parts", "NES": "body_parts",
     "BAL": "body_parts",
     "UNS": "other",
+    # plant, wood and plant-fibre products (VEN is wood veneer, FIB plant fibre)
+    "SEE": "other", "WPR": "other", "PLY": "other", "ROO": "other", "FLO": "other",
+    "GRS": "other", "SDL": "other", "CUT": "other", "CHP": "other", "FRU": "other",
+    "VEN": "other", "SAW": "other", "DPL": "other", "FIB": "other", "TIM": "other",
+    "LOG": "other", "CUL": "other", "STE": "other", "BAR": "other", "LVS": "other",
 }
 
 CITES_TERM_TO_GROUP = {
@@ -50,10 +63,11 @@ CITES_TERM_TO_GROUP = {
     "bodies": "bodies", "trophies": "trophies",
     "skins": "skins", "sides": "skins", "plates": "skins", "rug": "skins",
     "skin pieces": "skin_pieces", "skin scraps": "skin_pieces", "leather": "skin_pieces",
-    "leather products (small)": "leather_small", "leather items": "leather_small",
-    "fur product (small)": "leather_small",
-    "leather products (large)": "leather_large", "fur products (large)": "leather_large",
-    "garments": "garments", "shoes": "shoes", "cloth": "cloth",
+    "leather products (small)": "leather_products", "leather items": "leather_products",
+    "fur product (small)": "leather_products",
+    "leather products (large)": "leather_products", "fur products (large)": "leather_products",
+    "shoes": "leather_products",
+    "garments": "garments", "cloth": "cloth",
     "specimens": "specimens",
     "meat": "meat", "frog legs": "meat", "soup": "meat", "calipee": "meat",
     "caviar": "caviar",
@@ -69,7 +83,7 @@ CITES_TERM_TO_GROUP = {
     "shells": "shells", "carapaces": "shells", "scales": "scales",
     "feathers": "feathers", "quills": "feathers",
     "eggs": "eggs", "eggshell": "eggs",
-    "hair": "hair", "hair products": "hair",
+    "hair": "hair", "hair products": "hair", "fibres": "hair",
     "fins": "fins", "fin (dried)": "fins", "fin (wet)": "fins", "swim bladders": "fins",
     "gill plates": "fins",
     "extract": "extracts_medicine", "medicine": "extracts_medicine",
@@ -83,6 +97,9 @@ CITES_TERM_TO_GROUP = {
     "tails": "body_parts", "feet": "body_parts", "ears": "body_parts", "heads": "body_parts",
     "trunk": "body_parts", "baleen": "body_parts", "sawfish rostrum": "body_parts",
     "unspecified": "other",
+    # plant terms found on a few animal records
+    "flowers": "other", "wood product": "other", "thread": "other", "cultures": "other",
+    "leaves": "other",
 }
 
 # --- Units --------------------------------------------------------------------------------
@@ -100,12 +117,48 @@ CITES_UNIT = {
     "m2": ("m2", 1.0), "cm2": ("m2", 1e-4), "m3": ("m3", 1.0),
     "m": ("m", 1.0), "cm": ("m", 1e-2),
     "pairs": ("count", 2.0), "sets": ("count", 1.0), "sides": ("count", 1.0),
+    "microgrammes": ("kg", 1e-9),
+    # before 2015 only (none in the scoring window)
+    "lbs": ("kg", 0.45359237), "ft2": ("m2", 0.09290304),
+    "bellyskins": ("count", 1.0), "backskins": ("count", 1.0), "hornback skins": ("count", 1.0),
+    "(skins)": ("count", 1.0), "pieces": ("count", 1.0), "items": ("count", 1.0),
 }
 
 # --- Source / purpose ---------------------------------------------------------------------
-# Identical letter codes in both systems; anything else is mapped to "unknown".
-SOURCE_CODES = {"W", "C", "F", "R", "D", "A", "I", "P", "U", "O", "X", "Y"}
-PURPOSE_CODES = {"T", "P", "S", "H", "Z", "B", "E", "M", "Q", "N", "L", "G", "Y"}
+# The shared form uses the CITES codes. LEMIS writes two of them differently; anything not in
+# the shared set (including CITES X, which LEMIS has no equivalent for) becomes "unknown".
+LEMIS_SOURCE_TO_CITES = {"P": "O"}          # pre-Convention
+LEMIS_PURPOSE_TO_CITES = {"Y": "N"}         # reintroduction into the wild
+SOURCE_CODES = {"W", "C", "F", "R", "D", "A", "I", "U", "O"}
+PURPOSE_CODES = {"T", "P", "S", "H", "Z", "B", "E", "M", "Q", "N", "L", "G"}
+
+# --- Countries ----------------------------------------------------------------------------
+# LEMIS codes that never occur in CITES, mapped to CITES's own code or the ISO successor.
+LEMIS_COUNTRY_TO_CITES = {"VS": "XV", "ZZ": "HS", "ZR": "CD", "TP": "TL"}
+
+# --- Taxonomy -----------------------------------------------------------------------------
+# LEMIS follows Catalogue of Life class names, CITES its own nomenclature.
+LEMIS_CLASS_TO_CITES = {"Actinopterygii": "Actinopteri"}
+# Where one LEMIS class covers a CITES class with another name, the genus decides:
+# LEMIS "Sarcopterygii" covers CITES Coelacanthi and Dipneusti; LEMIS "Clitellata" holds both
+# earthworms and leeches, and CITES files leeches as Hirudinoidea.
+LEMIS_CLASS_BY_GENUS = {
+    ("Sarcopterygii", "latimeria"): "Coelacanthi",
+    ("Sarcopterygii", "neoceratodus"): "Dipneusti",
+    ("Sarcopterygii", "protopterus"): "Dipneusti",
+    ("Sarcopterygii", "lepidosiren"): "Dipneusti",
+    ("Clitellata", "hirudo"): "Hirudinoidea",
+    ("Clitellata", "hirudinaria"): "Hirudinoidea",
+    ("Clitellata", "placobdella"): "Hirudinoidea",
+}
+# Placeholder "genera" in LEMIS that name no taxon; treated as unknown.
+LEMIS_PLACEHOLDER_GENERA = {"Tropical fish", "All live tropical fish", "Non-CITES entry",
+                            "Other live inverts", "Various fish", "Unknown", "All plants",
+                            "Migratory bird", "Freshwater fish", "Fish ectoparasites"}
+# Classes in LEMIS that are not animals; the model learns from animals with a class.
+NON_ANIMAL_CLASSES = {"Magnoliopsida", "Liliopsida", "Polypodiopsida", "Cycadopsida",
+                      "Pinopsida", "Ulvophyceae", "Phaeophyceae", "Gammaproteobacteria",
+                      "Chytridiomycetes", "Agaricomycetes"}
 
 # --- Countries -> world region (used for the simulated domain-shift experiment) -----------
 REGION_OF = {}
@@ -117,7 +170,7 @@ _REGIONS = {
     "Europe": "AL AD AT BY BE BA BG HR CY CZ DK EE FO FI FR DE GI GR HU IS IE IT LV LI LT LU MT MD "
               "MC ME NL MK NO PL PT RO RU SM RS SK SI ES SE CH UA GB VA XK GG JE IM",
     "Americas": "AG AR BS BB BZ BO BR CA CL CO CR CU DM DO EC SV GD GT GY HT HN JM MX NI PA PY PE "
-                "KN LC VC SR TT US UY VE AI AW BM VG KY CW GF GP MQ MS PR SX TC VI BQ PM GL FK",
+                "KN LC VC SR TT US UY VE AI AW BM VG KY CW GF GP MQ MS PR SX TC VI BQ PM GL FK AN",
     "Oceania": "AU FJ KI MH FM NR NZ PW PG WS SB TO TV VU NC PF CK NU AS GU MP WF TK NF PN",
 }
 for _region, _codes in _REGIONS.items():

@@ -81,9 +81,9 @@ h1, h2, h3, h4, h5, [data-testid="stMetricValue"], .wg-sign {{
 TIER_STYLE = {"priority": ("#d03b3b", "Priority review"), "review": ("#fab219", "Review"),
               "routine": ("#0ca30c", "Routine"), "auto-clear": ("#0ca30c", "Auto-clear")}
 PRODUCT_GROUPS = ["live", "live_eggs", "bodies", "trophies", "skins", "skin_pieces",
-                  "leather_small", "leather_large", "garments", "shoes", "cloth", "specimens",
+                  "leather_products", "garments", "cloth", "specimens",
                   "meat", "caviar", "ivory", "horn", "bone", "skulls", "teeth_claws",
-                  "coral_raw", "coral_live_rock", "shells", "scales", "feathers", "eggs", "hair",
+                  "coral_raw", "shells", "scales", "feathers", "eggs", "hair",
                   "fins", "extracts_medicine", "carvings_jewellery", "body_parts", "other"]
 CLASS_ICON = {"Reptilia": "🦎", "Mammalia": "🐘", "Aves": "🦜", "Anthozoa": "🪸",
               "Actinopteri": "🐟", "Amphibia": "🐸", "Bivalvia": "🐚", "Gastropoda": "🐌",

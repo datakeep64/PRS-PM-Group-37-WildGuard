@@ -18,6 +18,7 @@ experiments will follow here as notebooks 06 onward.
 | [`03_lemis_vs_cites.ipynb`](03_lemis_vs_cites.ipynb) | Field-by-field comparison: code, unit, product, taxonomy and country mismatches; the deployment shift; the 2013–14 US overlap; the preprocessing the shared schema needs |
 | [`05_mirror_records.ipynb`](05_mirror_records.ipynb) | Decision 1, mirror records: whether exporter and importer reports can be paired, which matches actual US imports better, which trade only importers report, and how much review effort each rule loses (findings M1–M6) |
 | [`04_training_population.ipynb`](04_training_population.ipynb) | Decision 2, training population: the same model trained on four LEMIS populations, compared on held-out CITES-listed line items; its CITES-side checks use the Decision 1 rule (findings P1–P5) |
+| [`06_product_groups.ipynb`](06_product_groups.ipynb) | Design question S1.1, product groups defined by how each vocabulary codes an object, and a correction to the appendix feature's genus rule (findings G1–G6). Reads the rebuilt aligned files and the pre-rework copies in `DATA/processed/pre_rework/` |
 
 They read the raw downloads in `DATA/raw/` (see [`DATA/README.md`](../../DATA/README.md)). The first
 run copies them to Parquet in `DATA/processed/` (about 20 seconds); after that each notebook runs in

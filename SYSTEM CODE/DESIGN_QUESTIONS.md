@@ -57,7 +57,7 @@ Learning Systems).
 | Stage | Current pipeline | After the rebuild (settled) | Open |
 |---|---|---|---|
 | **0 · Select records** (new) | All LEMIS line items; all CITES animal records, both reporter types | LEMIS animals with a class; CITES rule D, Appendix `N` removed, source `I` / purpose `L` out of the ranking | — |
-| **1 · Align** | Codes mapped by name; `P`/`O`, `Y`/`N` and some countries unmapped; latest appendix | Full crosswalk; higher taxa one way; appendix in force | S1.1 product groups |
+| **1 · Align** | Codes mapped by name; `P`/`O`, `Y`/`N` and some countries unmapped; latest appendix | Full crosswalk; higher taxa one way; appendix in force; product groups by coding (done on branch `rework`) | — |
 | **2 · Features** | Peer norms per population; peer groups on the current product groups | Peer groups on the new product groups and higher taxa; permit ID carried, not a feature | S2.1 whose peer norms; S2.2 consignment features; feature selection (B8) |
 | **3 · Supervised** | XGBoost on all line items, chosen in advance | Trained on animals with a class; model chosen by Part B | Part B |
 | **4 · Unsupervised** | Peer deviation, Isolation Forest, K-Means, refitted on all CITES records | Refitted on rule D's records; detectors chosen by Part B | Part B |
@@ -93,7 +93,11 @@ Settled (ALIGNING §2.1; code changes in ALIGNING §3):
 - Fields with no counterpart (value, port, month, companies, permits) stay out of the shared
   model.
 
-**S1.1 Product groups.** *To test.* RQ1.
+**S1.1 Product groups.** *Decided* (31 October 2026, notebook 06). RQ1. One leather group for
+small and large leather goods, shoes and trim; live rock joins raw coral; plant codes go to
+`other` and CITES *fibres* to `hair`. The remaining tenfold gaps are differences in trade (G5).
+The notebook also found that the appendix feature's genus fallback was wrong for named species,
+and the rule was corrected (G6; ALIGNING §2.1). The original question, for the record:
 - Why open: the current 31 groups match names. LEMIS shoes (220,574 line items) and live rock
   (19,624) sit in groups no CITES record falls into (ALIGNING §3 #14, X5). The rule is already set
   in ALIGNING §2.1: group by how each vocabulary codes the object. This question applies it.
@@ -463,7 +467,9 @@ Settled:
 - Domain classifiers use raw fields only (fingerprinting, §6.6 B).
 - Decisions D and B were made with the current features: rerun notebooks 04 and 05 on the rebuilt
   features as a check (their rules are already written). Notebook 04 is also judged on PR-AUC
-  (B4).
+  (B4). Before the rerun, `notebooks/experiment_setup.py` should read the appendix, `animal`,
+  `sp_listed` and `rule_d` from the rebuilt aligned files instead of deriving them: it still uses
+  the old genus fallback (notebook 06, G6) and maps CITES codes back to LEMIS ones.
 
 **C1 Which held-out sets are reported, and which answers RQ2.** *Decided* (31 October 2026). RQ2.
 - Why open: the headline PR-AUC (0.599) is on all LEMIS test records, where personal imports are
@@ -573,7 +579,8 @@ run first; if usable, it is a test set for S2.1, S5.1 and C6.
 ## Order of work
 
 1. **Data rebuild (pipeline stages 0–2):** implement the settled items, decide S1.1, run the
-   ALIGNING §2.4 checks. Part B's candidates are compared on this data.
+   ALIGNING §2.4 checks. Part B's candidates are compared on this data. *Done on branch `rework`,
+   31 October 2026: `prepare_data.py`, `check_alignment.py` (all checks pass), notebook 06.*
 2. **C5:** build and test the US-overlap set.
 3. **Choices and plans:** all decided on 31 October 2026 (B1–B4, B9, C1–C4, C7; see Decisions).
 4. **S2.1** (whose peer norms), then **S2.2** (consignment features).
@@ -603,3 +610,6 @@ run first; if usable, it is a test set for S2.1, S5.1 and C6.
 | C3 Cost of LEMIS-only fields | Measured on test records where value was recorded | 31 October 2026 | Value missing for 2014 and 44% of 2013 |
 | C4 Shift measurement | Time, trade mix, recording measured; jurisdiction a limitation | 31 October 2026 | C4 table |
 | C7 CITES check criteria | Pass criteria for checks 1–3 as written in C7 | 31 October 2026 | — |
+| S1.1 Product groups | One leather group; live rock with raw coral; plant codes to `other`; CITES fibres to `hair` | 31 October 2026 | notebook 06, G1–G5 |
+| Appendix genus rule | Genus decides only when no species is named; otherwise `genus_listed` | 31 October 2026 | notebook 06, G6 |
+| Leech class | LEMIS `Clitellata` leech genera map to CITES `Hirudinoidea` | 31 October 2026 | ALIGNING §2.4 check 3 |
